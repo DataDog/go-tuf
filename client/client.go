@@ -655,6 +655,11 @@ type Destination interface {
 //   * Metadata cannot be generated for the downloaded data
 //   * Generated metadata does not match local metadata for the given file
 func (c *Client) Download(name string, dest Destination) (err error) {
+	err, _ = c.DownloadWithCustom(name, dest)
+	return err
+}
+
+func (c *Client) DownloadWithCustom(name string, dest Destination) (err error, custom *json.RawMessage) {
 	// delete dest if there is an error
 	defer func() {
 		if err != nil {
@@ -665,7 +670,7 @@ func (c *Client) Download(name string, dest Destination) (err error) {
 	// populate c.targets from local storage if not set
 	if c.targets == nil {
 		if err := c.getLocalMeta(); err != nil {
-			return err
+			return err, nil
 		}
 	}
 
@@ -675,20 +680,20 @@ func (c *Client) Download(name string, dest Destination) (err error) {
 		// search in delegations
 		localMeta, err = c.getTargetFileMeta(normalizedName)
 		if err != nil {
-			return err
+			return err, nil
 		}
 	}
 
 	// get the data from remote storage
 	r, size, err := c.downloadTarget(normalizedName, c.remote.GetTarget, localMeta.Hashes)
 	if err != nil {
-		return err
+		return err, nil
 	}
 	defer r.Close()
 
 	// return ErrWrongSize if the reported size is known and incorrect
 	if size >= 0 && size != localMeta.Length {
-		return ErrWrongSize{name, size, localMeta.Length}
+		return ErrWrongSize{name, size, localMeta.Length}, nil
 	}
 
 	// wrap the data in a LimitReader so we download at most localMeta.Length bytes
@@ -697,18 +702,18 @@ func (c *Client) Download(name string, dest Destination) (err error) {
 	// read the data, simultaneously writing it to dest and generating metadata
 	actual, err := util.GenerateTargetFileMeta(io.TeeReader(stream, dest), localMeta.HashAlgorithms()...)
 	if err != nil {
-		return ErrDownloadFailed{name, err}
+		return ErrDownloadFailed{name, err}, nil
 	}
 
 	// check the data has the correct length and hashes
 	if err := util.TargetFileMetaEqual(actual, localMeta); err != nil {
 		if e, ok := err.(util.ErrWrongLength); ok {
-			return ErrWrongSize{name, e.Actual, e.Expected}
+			return ErrWrongSize{name, e.Actual, e.Expected}, nil
 		}
-		return ErrDownloadFailed{name, err}
+		return ErrDownloadFailed{name, err}, nil
 	}
 
-	return nil
+	return nil, localMeta.Custom
 }
 
 // Target returns the target metadata for a specific target if it
