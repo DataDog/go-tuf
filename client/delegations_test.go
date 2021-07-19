@@ -282,113 +282,117 @@ func TestUnverifiedTargets(t *testing.T) {
 
 func TestPersistedMeta(t *testing.T) {
 	verify.IsExpired = func(t time.Time) bool { return false }
-	c, closer := initTestDelegationClient(t, "testdata/php-tuf-fixtures/TUFTestFixture3LevelDelegation")
-	defer closer()
-	_, err := c.Update()
-	assert.Nil(t, err)
+	for _, rootUpdater := range []bool{false, true} {
+		c, closer := initTestDelegationClient(t, "testdata/php-tuf-fixtures/TUFTestFixture3LevelDelegation")
+		defer closer()
+		c.ChainedRootUpdater = rootUpdater
 
-	_, err = c.local.GetMeta()
-	assert.Nil(t, err)
+		_, err := c.Update()
+		assert.Nil(t, err)
 
-	type expectedTargets struct {
-		name    string
-		version int
-	}
-	var persistedTests = []struct {
-		file          string
-		targets       []expectedTargets
-		downloadError error
-		fileContent   string
-	}{
-		{
-			file: "unknown",
-			targets: []expectedTargets{
-				{
-					name:    "targets.json",
-					version: 2,
+		_, err = c.local.GetMeta()
+		assert.Nil(t, err)
+
+		type expectedTargets struct {
+			name    string
+			version int
+		}
+		var persistedTests = []struct {
+			file          string
+			targets       []expectedTargets
+			downloadError error
+			fileContent   string
+		}{
+			{
+				file: "unknown",
+				targets: []expectedTargets{
+					{
+						name:    "targets.json",
+						version: 2,
+					},
 				},
+				downloadError: ErrUnknownTarget{Name: "unknown", SnapshotVersion: 2},
+				fileContent:   "",
 			},
-			downloadError: ErrUnknownTarget{Name: "unknown", SnapshotVersion: 2},
-			fileContent:   "",
-		},
-		{
-			file: "b.txt",
-			targets: []expectedTargets{
-				{
-					name:    "targets.json",
-					version: 2,
+			{
+				file: "b.txt",
+				targets: []expectedTargets{
+					{
+						name:    "targets.json",
+						version: 2,
+					},
+					{
+						name:    "a.json",
+						version: 1,
+					},
+					{
+						name:    "b.json",
+						version: 1,
+					},
 				},
-				{
-					name:    "a.json",
-					version: 1,
-				},
-				{
-					name:    "b.json",
-					version: 1,
-				},
+				downloadError: nil,
+				fileContent:   "Contents: b.txt",
 			},
-			downloadError: nil,
-			fileContent:   "Contents: b.txt",
-		},
-		{
-			file: "f.txt",
-			targets: []expectedTargets{
-				{
-					name:    "targets.json",
-					version: 2,
+			{
+				file: "f.txt",
+				targets: []expectedTargets{
+					{
+						name:    "targets.json",
+						version: 2,
+					},
+					{
+						name:    "a.json",
+						version: 1,
+					},
+					{
+						name:    "b.json",
+						version: 1,
+					},
+					{
+						name:    "c.json",
+						version: 1,
+					},
+					{
+						name:    "d.json",
+						version: 1,
+					},
+					{
+						name:    "e.json",
+						version: 1,
+					},
+					{
+						name:    "f.json",
+						version: 1,
+					},
 				},
-				{
-					name:    "a.json",
-					version: 1,
-				},
-				{
-					name:    "b.json",
-					version: 1,
-				},
-				{
-					name:    "c.json",
-					version: 1,
-				},
-				{
-					name:    "d.json",
-					version: 1,
-				},
-				{
-					name:    "e.json",
-					version: 1,
-				},
-				{
-					name:    "f.json",
-					version: 1,
-				},
+				downloadError: nil,
+				fileContent:   "Contents: f.txt",
 			},
-			downloadError: nil,
-			fileContent:   "Contents: f.txt",
-		},
-	}
+		}
 
-	for _, tt := range persistedTests {
-		t.Run("search "+tt.file, func(t *testing.T) {
-			var dest testDestination
-			err = c.Download(tt.file, &dest)
-			assert.Equal(t, tt.downloadError, err)
-			assert.Equal(t, tt.fileContent, dest.String())
+		for _, tt := range persistedTests {
+			t.Run("search "+tt.file, func(t *testing.T) {
+				var dest testDestination
+				err = c.Download(tt.file, &dest)
+				assert.Equal(t, tt.downloadError, err)
+				assert.Equal(t, tt.fileContent, dest.String())
 
-			p, err := c.local.GetMeta()
-			assert.Nil(t, err)
-			persisted := copyStore(p)
-			// trim non targets metas
-			for _, notTargets := range []string{"root.json", "snapshot.json", "timestamp.json"} {
-				delete(persisted, notTargets)
-			}
-			for _, targets := range tt.targets {
-				storedVersion, err := versionOfStoredTargets(targets.name, persisted)
-				assert.Equal(t, targets.version, storedVersion)
+				p, err := c.local.GetMeta()
 				assert.Nil(t, err)
-				delete(persisted, targets.name)
-			}
-			assert.Empty(t, persisted)
-		})
+				persisted := copyStore(p)
+				// trim non targets metas
+				for _, notTargets := range []string{"root.json", "snapshot.json", "timestamp.json"} {
+					delete(persisted, notTargets)
+				}
+				for _, targets := range tt.targets {
+					storedVersion, err := versionOfStoredTargets(targets.name, persisted)
+					assert.Equal(t, targets.version, storedVersion)
+					assert.Nil(t, err)
+					delete(persisted, targets.name)
+				}
+				assert.Empty(t, persisted)
+			})
+		}
 	}
 }
 

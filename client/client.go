@@ -19,6 +19,7 @@ const (
 	defaultRootDownloadLimit      = 512000
 	defaultTimestampDownloadLimit = 16384
 	defaultMaxDelegations         = 32
+	defaultMaxRoots               = 10000
 )
 
 // LocalStore is local storage for downloaded top-level metadata.
@@ -86,13 +87,19 @@ type Client struct {
 	// MaxDelegations limits by default the number of delegations visited for any
 	// target
 	MaxDelegations int
+
+	// ChainedRootUpdater enables https://theupdateframework.github.io/specification/v1.0.19/index.html#update-root
+	ChainedRootUpdater bool
+	// UpdaterMaxRoots limits the number of downloaded roots in 1.0.19 root updater
+	UpdaterMaxRoots int
 }
 
 func NewClient(local LocalStore, remote RemoteStore) *Client {
 	return &Client{
-		local:          local,
-		remote:         remote,
-		MaxDelegations: defaultMaxDelegations,
+		local:           local,
+		remote:          remote,
+		MaxDelegations:  defaultMaxDelegations,
+		UpdaterMaxRoots: defaultMaxRoots,
 	}
 }
 
@@ -144,6 +151,13 @@ func (c *Client) Init(rootKeys []*data.Key, threshold int) error {
 //
 // https://github.com/theupdateframework/tuf/blob/v0.9.9/docs/tuf-spec.txt#L714
 func (c *Client) Update() (data.TargetFiles, error) {
+	if c.ChainedRootUpdater {
+		if err := c.updateRoots(); err != nil {
+			return data.TargetFiles{}, err
+		}
+		return c.update(true)
+	}
+
 	return c.update(false)
 }
 
@@ -247,6 +261,56 @@ func (c *Client) update(latestRoot bool) (data.TargetFiles, error) {
 	}
 
 	return updatedTargets, nil
+}
+
+// https://theupdateframework.github.io/specification/v1.0.19/index.html#update-root
+func (c *Client) updateRoots() error {
+	var expiredError error
+	nextVersion := c.rootVer + 1
+	for i := 0; i < c.UpdaterMaxRoots; i++ {
+		// reload last root db
+		if err := c.getLocalMeta(); err != nil {
+			return err
+		}
+		// 5.3.3 download next root
+		path := util.VersionedPath("root.json", nextVersion)
+		rawRoot, err := c.downloadMetaUnsafe(path, defaultRootDownloadLimit)
+		if err != nil {
+			// stop when the next root can't be downloaded
+			if _, ok := err.(ErrMissingRemoteMetadata); ok {
+				// 5.3.10 latest root downloaded is expired
+				return expiredError
+			}
+		}
+		root := &data.Root{}
+		// 5.4.4 verify signature by last root
+		if err := c.db.Unmarshal(rawRoot, root, "root", c.rootVer); err != nil {
+			// 5.3.6 ignore expired error to check it on last root version
+			if _, ok := err.(verify.ErrExpired); ok {
+				expiredError = err
+			} else {
+				return ErrDecodeFailed{"root.json", err}
+			}
+		} else {
+			expiredError = nil
+		}
+		// 5.3.5 check for rollback attack
+		if root.Version != nextVersion {
+			return ErrWrongRootVersion{
+				DownloadedVersion: root.Version,
+				ExpectedVersion:   nextVersion,
+			}
+		}
+
+		// 5.3.7, 5.3.8
+		c.rootVer = root.Version
+		c.consistentSnapshot = root.ConsistentSnapshot
+		if err := c.local.SetMeta("root.json", rawRoot); err != nil {
+			return err
+		}
+		nextVersion++
+	}
+	return expiredError
 }
 
 func (c *Client) updateWithLatestRoot(m *data.SnapshotFileMeta) (data.TargetFiles, error) {
