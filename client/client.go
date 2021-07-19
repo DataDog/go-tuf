@@ -96,6 +96,22 @@ func NewClient(local LocalStore, remote RemoteStore) *Client {
 	}
 }
 
+// InitWithRoot initializes a local repository with
+// a given root.
+func (c *Client) InitWithRoot(raw []byte) error {
+	var s data.Signed
+	if err := json.Unmarshal(raw, &s); err != nil {
+		return err
+	}
+	var root data.Root
+	if err := json.Unmarshal(s.Signed, &root); err != nil {
+		return err
+	}
+	c.rootVer = root.Version
+	c.consistentSnapshot = root.ConsistentSnapshot
+	return c.local.SetMeta("root.json", raw)
+}
+
 // Init initializes a local repository.
 //
 // The latest root.json is fetched from remote storage, verified using rootKeys
