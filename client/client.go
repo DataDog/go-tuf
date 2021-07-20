@@ -14,8 +14,7 @@ import (
 
 const (
 	// This is the upper limit in bytes we will use to limit the download
-	// size of the root/timestamp roles, since we might not don't know how
-	// big it is.
+	// size of the root/timestamp roles, since the size is unknown.
 	defaultRootDownloadLimit      = 512000
 	defaultTimestampDownloadLimit = 16384
 	defaultMaxDelegations         = 32
@@ -263,54 +262,102 @@ func (c *Client) update(latestRoot bool) (data.TargetFiles, error) {
 	return updatedTargets, nil
 }
 
-// https://theupdateframework.github.io/specification/v1.0.19/index.html#update-root
 func (c *Client) updateRoots() error {
-	var expiredError error
-	nextVersion := c.rootVer + 1
-	for i := 0; i < c.UpdaterMaxRoots; i++ {
-		// reload last root db
-		if err := c.getLocalMeta(); err != nil {
-			return err
-		}
-		// 5.3.3 download next root
-		path := util.VersionedPath("root.json", nextVersion)
-		rawRoot, err := c.downloadMetaUnsafe(path, defaultRootDownloadLimit)
+	// https://theupdateframework.github.io/specification/v1.0.19/index.html#load-trusted-root
+
+	// 5.2. Load the trusted root metadata file. We assume that a good,
+	// trusted copy of this file was shipped with the package manager
+	// or software updater using an out-of-band process. Note that
+	// the expiration of the trusted root metadata file does not
+	// matter, because we will attempt to update it in the next step.
+
+	if err := c.getLocalMeta(); err != nil {
+		return err
+	}
+
+	// https://theupdateframework.github.io/specification/v1.0.19/index.html#update-root
+
+	// 5.3.1 Since it may now be signed using entirely different keys,
+	// the client MUST somehow be able to establish a trusted line of
+	// continuity to the latest set of keys (see § 6.1 Key
+	// management and migration). To do so, the client MUST
+	// download intermediate root metadata files, until the
+	// latest available one is reached. Therefore, it MUST
+	// temporarily turn on consistent snapshots in order to
+	// download versioned root metadata files as described next.
+
+	// This loop returns on error and breaks after downloading the lastest root metadata:
+	// (i) real error (timestamp expiration, decode fail, etc)
+	// (ii) missing root metadata version X (the latest version is being fetched already)
+	// 5.3.2 Let N denote the version number of the trusted root metadata file.
+	for n := c.rootVer + 1; n < c.UpdaterMaxRoots; n++ {
+		// 5.3.3 Try downloading version N+1 of the root metadata file
+		nthRootPath := util.VersionedPath("root.json", n)
+		nthRootMetadata, err := c.downloadMetaUnsafe(nthRootPath, defaultRootDownloadLimit)
 		if err != nil {
 			// stop when the next root can't be downloaded
+			// hosseinsia: Instead, check the error type,
+			// then check for the expiration dates
 			if _, ok := err.(ErrMissingRemoteMetadata); ok {
-				// 5.3.10 latest root downloaded is expired
-				return expiredError
-			}
-		}
-		root := &data.Root{}
-		// 5.4.4 verify signature by last root
-		if err := c.db.Unmarshal(rawRoot, root, "root", c.rootVer); err != nil {
-			// 5.3.6 ignore expired error to check it on last root version
-			if _, ok := err.(verify.ErrExpired); ok {
-				expiredError = err
+				break
 			} else {
-				return ErrDecodeFailed{"root.json", err}
-			}
-		} else {
-			expiredError = nil
-		}
-		// 5.3.5 check for rollback attack
-		if root.Version != nextVersion {
-			return ErrWrongRootVersion{
-				DownloadedVersion: root.Version,
-				ExpectedVersion:   nextVersion,
+				return err
 			}
 		}
 
-		// 5.3.7, 5.3.8
-		c.rootVer = root.Version
-		c.consistentSnapshot = root.ConsistentSnapshot
-		if err := c.local.SetMeta("root.json", rawRoot); err != nil {
+		// 5.3.4 Check for an arbitrary software attack.
+		// FIXME: clarify difference between signed and the whole (including signatures) metadata.
+		nthRootMetadataSigned := &data.Root{}
+
+		// 5.3.4.1 Check that N signed N+1
+		if err := c.db.Unmarshal(nthRootMetadata, nthRootMetadataSigned, "root", c.rootVer); err != nil {
+			// NOTE: ignore ONLY expiration error; see 5.3.10
+			if _, ok := err.(verify.ErrExpired); !ok {
+				return err
+			}
+		}
+
+		//no need TODO: 5.3.7 Set the trusted root metadata file to the new root metadata file.
+		//no need TODO: 5.3.4.2 check that N+1 signed itself
+
+		// 5.3.5 Check for a rollback attack.
+		if nthRootMetadataSigned.Version != n {
+			return ErrWrongRootVersion{
+				DownloadedVersion: nthRootMetadataSigned.Version,
+				ExpectedVersion:   n,
+			}
+		}
+
+		// 5.3.6 Note that the expiration of the new (intermediate) root
+		// metadata file does not matter yet, because we will check for
+		// it in step 5.3.10.
+
+		// 5.3.8 Persist root metadata.
+		c.rootVer = nthRootMetadataSigned.Version
+		c.consistentSnapshot = nthRootMetadataSigned.ConsistentSnapshot
+		if err := c.local.SetMeta("root.json", nthRootMetadata); err != nil {
 			return err
 		}
-		nextVersion++
+
+		// 5.3.4.2 check that N+1 signed itself.
+		if err := c.getLocalMeta(); err != nil {
+			if _, ok := err.(verify.ErrExpired); !ok {
+				return verify.ErrInvalid
+			}
+		}
+		// 5.3.9 Repeat steps 5.3.2 to 5.3.9
 	}
-	return expiredError
+
+	// 5.3.10 Check for a freeze attack.
+
+	// Explicitly check the client's datetime vs. root versions' timestamp.
+	//if time.Now().Sub(c.local.GetMeta("timestamp")) >= 0 {
+
+	// 5.3.11 If the timestamp and / or snapshot keys have been rotated,
+	// then delete the trusted timestamp and snapshot metadata files.
+
+	// 5.3.12 Set whether consistent snapshots are used as per the trusted root metadata file
+	return nil
 }
 
 func (c *Client) updateWithLatestRoot(m *data.SnapshotFileMeta) (data.TargetFiles, error) {
