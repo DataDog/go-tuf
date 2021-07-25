@@ -12,7 +12,7 @@ import (
 	"github.com/theupdateframework/go-tuf/data"
 )
 
-//Initializes a local HTTP server that serves TUF Repo
+//Initializes a local HTTP server and serves TUF Repo.
 func initTestTUFRepoServer(baseDir string, relPath string) (net.Listener, error) {
 	serverDir := filepath.Join(baseDir, relPath)
 	l, err := net.Listen("tcp", "127.0.0.1:0")
