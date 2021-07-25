@@ -360,6 +360,21 @@ func (s *ClientSuite) TestNewRoot(c *C) {
 	}
 }
 
+// Test helper
+func initTestClient(c *C, baseDir string) (*Client, func() error) {
+	l, err := initTestTUFRepoServer(baseDir, "server")
+	c.Assert(err, IsNil)
+	tufClient, err := initTestTUFClient(baseDir, "client/metadata/current", l.Addr().String())
+	c.Assert(err, IsNil)
+	return tufClient, l.Close
+}
+
+// Tests updateRoots method.
+func (s *ClientSuite) TestUpdateRoot(c *C) {
+	c, closer := initTestClient(c, "testdata/php-tuf-fixtures/TUFTestFixture3LevelDelegation")
+	defer closer()
+}
+
 func (s *ClientSuite) TestNewTargets(c *C) {
 	client := s.newClient(c)
 	files, err := client.Update()
