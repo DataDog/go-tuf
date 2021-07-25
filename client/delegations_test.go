@@ -2,12 +2,7 @@ package client
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
-	"io/ioutil"
-	"net"
-	"net/http"
-	"strings"
 	"testing"
 	"time"
 
@@ -415,52 +410,11 @@ func versionOfStoredTargets(name string, store map[string]json.RawMessage) (int,
 	return targets.Version, nil
 }
 
-func initTestDelegationClient(t *testing.T, dirPrefix string) (*Client, func() error) {
-	serverDir := dirPrefix + "/server"
-	initialStateDir := dirPrefix + "/client/metadata/current"
-	l, err := net.Listen("tcp", "127.0.0.1:0")
+func initTestDelegationClient(t *testing.T, baseDir string) (*Client, func() error) {
+	l, err := initTestTUFRepoServer(baseDir, "server")
 	assert.Nil(t, err)
-	addr := l.Addr().String()
-	go http.Serve(l, http.FileServer(http.Dir(serverDir)))
-
-	opts := &HTTPRemoteOptions{
-		MetadataPath: "metadata",
-		TargetsPath:  "targets",
-	}
-	remote, err := HTTPRemoteStore(fmt.Sprintf("http://%s/", addr), opts, nil)
-
-	c := NewClient(MemoryLocalStore(), remote)
-	rawFile, err := ioutil.ReadFile(initialStateDir + "/" + "root.json")
+	c, err := initTestTUFClient(baseDir, "client/metadata/current", l.Addr().String())
 	assert.Nil(t, err)
-	s := &data.Signed{}
-	root := &data.Root{}
-	assert.Nil(t, json.Unmarshal(rawFile, s))
-	assert.Nil(t, json.Unmarshal(s.Signed, root))
-	var keys []*data.Key
-	for _, sig := range s.Signatures {
-		k, ok := root.Keys[sig.KeyID]
-		if ok {
-			keys = append(keys, k)
-		}
-	}
-
-	assert.Nil(t, c.Init(keys, 1))
-	files, err := ioutil.ReadDir(initialStateDir)
-	assert.Nil(t, err)
-
-	// load local files
-	for _, f := range files {
-		if f.IsDir() {
-			continue
-		}
-		name := f.Name()
-		// ignoring consistent snapshot when loading initial state
-		if len(strings.Split(name, ".")) == 1 && strings.HasSuffix(name, ".json") {
-			rawFile, err := ioutil.ReadFile(initialStateDir + "/" + name)
-			assert.Nil(t, err)
-			assert.Nil(t, c.local.SetMeta(name, rawFile))
-		}
-	}
 	return c, l.Close
 }
 
