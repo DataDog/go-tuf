@@ -8,9 +8,11 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	cjson "github.com/tent/canonical-json-go"
 	tuf "github.com/theupdateframework/go-tuf"
 	"github.com/theupdateframework/go-tuf/data"
@@ -380,20 +382,34 @@ func initTestClient(c *C, baseDir string) (*Client, func() error) {
 
 // Tests updateRoots method.
 func (s *ClientSuite) TestUpdateRoot(c *C) {
-	for _, rootUpdater := range []bool{false, true} {
 
-		// Backup the verify.IsExpired
+	var tests = []struct {
+		fixturePath          string
+		rootUpdater          bool
+		isExpiredReturnValue string // Any value other than true or false will be considered nil.
+		// Fakes the verify.IsExpired to return this value.
+		// Set to nil if no change is required.
+		extpectedError error
+	}{
+		{"testdata/PublishTwiceStaleVersionNumberWithRotatedKeys_root", true, "false", ErrWrongRootVersion{1, 2}},
+		{"testdata/PublishedTwiceWithRotatedKeys_root", true, "false", nil},
+	}
+
+	for _, test := range tests {
 		e := verify.IsExpired
-		// Fake verify.IsExpired
-		verify.IsExpired = func(t time.Time) bool { return false }
+		if isExpiredReturnValue, err := strconv.ParseBool(test.isExpiredReturnValue); err == nil {
+			verify.IsExpired = func(t time.Time) bool { return isExpiredReturnValue }
+		}
 
-		tufClient, closer := initTestClient(c, "testdata/PublishedTwiceWithRotatedKeys_root")
-		// Restore the verify.IsExpired
-
-		defer closer()
-		tufClient.ChainedRootUpdater = rootUpdater
+		tufClient, closer := initTestClient(c, test.fixturePath)
+		tufClient.ChainedRootUpdater = test.rootUpdater
 		_, err := tufClient.Update()
-		c.Assert(err, IsNil)
+		if test.extpectedError == nil {
+			c.Assert(err, IsNil)
+		} else {
+			assert.Equal(c, err, test.extpectedError)
+		}
+		closer()
 		verify.IsExpired = e
 	}
 }
