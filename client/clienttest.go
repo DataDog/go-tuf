@@ -56,7 +56,6 @@ func initTestTUFClient(baseDir string, relPath string, serverAddr string) (*Clie
 	if err := c.Init(keys, 1); err != nil {
 		return nil, err
 	}
-
 	files, err := ioutil.ReadDir(initialStateDir)
 	if err != nil {
 		return nil, err
