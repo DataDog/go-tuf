@@ -413,7 +413,7 @@ func versionOfStoredTargets(name string, store map[string]json.RawMessage) (int,
 func initTestDelegationClient(t *testing.T, baseDir string) (*Client, func() error) {
 	l, err := initTestTUFRepoServer(baseDir, "server")
 	assert.Nil(t, err)
-	c, err := initTestTUFClient(baseDir, "client/metadata/current", l.Addr().String())
+	c, err := initTestTUFClient(baseDir, "client/metadata/current", l.Addr().String(), false)
 	assert.Nil(t, err)
 	return c, l.Close
 }

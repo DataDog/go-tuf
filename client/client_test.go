@@ -372,17 +372,16 @@ func (s *ClientSuite) TestNewRoot(c *C) {
 }
 
 // Test helper
-func initTestClient(c *C, baseDir string) (*Client, func() error) {
+func initTestClient(c *C, baseDir string, initWithLocalMetadata bool) (*Client, func() error) {
 	l, err := initTestTUFRepoServer(baseDir, "server")
 	c.Assert(err, IsNil)
-	tufClient, err := initTestTUFClient(baseDir, "client/metadata/current", l.Addr().String())
+	tufClient, err := initTestTUFClient(baseDir, "client/metadata/current", l.Addr().String(), initWithLocalMetadata)
 	c.Assert(err, IsNil)
 	return tufClient, l.Close
 }
 
 // Tests updateRoots method.
 func (s *ClientSuite) TestUpdateRoot(c *C) {
-
 	var tests = []struct {
 		fixturePath          string
 		rootUpdater          bool
@@ -391,8 +390,9 @@ func (s *ClientSuite) TestUpdateRoot(c *C) {
 		// Set to nil if no change is required.
 		extpectedError error
 	}{
-		{"testdata/PublishTwiceStaleVersionNumberWithRotatedKeys_root", true, "false", ErrWrongRootVersion{1, 2}},
 		{"testdata/PublishedTwiceWithRotatedKeys_root", true, "false", nil},
+		{"testdata/PublishTwiceStaleVersionNumberWithRotatedKeys_root", true, "false", ErrWrongRootVersion{1, 2}},
+		{"testdata/PublishedTwiceInvalidNewRootSignatureWithRotatedKeys_root", true, "false", ErrInvalidSignature{}},
 	}
 
 	for _, test := range tests {
@@ -401,17 +401,18 @@ func (s *ClientSuite) TestUpdateRoot(c *C) {
 			verify.IsExpired = func(t time.Time) bool { return isExpiredReturnValue }
 		}
 
-		tufClient, closer := initTestClient(c, test.fixturePath)
+		tufClient, closer := initTestClient(c, test.fixturePath, true)
 		tufClient.ChainedRootUpdater = test.rootUpdater
 		_, err := tufClient.Update()
 		if test.extpectedError == nil {
 			c.Assert(err, IsNil)
 		} else {
-			assert.Equal(c, err, test.extpectedError)
+			assert.Equal(c, test.extpectedError, err)
 		}
 		closer()
 		verify.IsExpired = e
 	}
+
 }
 
 func (s *ClientSuite) TestNewTargets(c *C) {

@@ -290,10 +290,10 @@ func (c *Client) updateRoots() error {
 	// (i) real error (timestamp expiration, decode fail, etc)
 	// (ii) missing root metadata version X (the latest version is being fetched already)
 	// 5.3.2 Let N denote the version number of the trusted root metadata file.
-	for n := c.rootVer + 1; n < c.UpdaterMaxRoots; n++ {
-		// 5.3.3 Try downloading version N+1 of the root metadata file
-		nthRootPath := util.VersionedPath("root.json", n)
-		nthRootMetadata, err := c.downloadMetaUnsafe(nthRootPath, defaultRootDownloadLimit)
+	for nPlusOne := c.rootVer + 1; nPlusOne < c.UpdaterMaxRoots; nPlusOne++ {
+		// 5.3.3 Try downloading version nPlusOne (N+1) of the root metadata file
+		nPlusOneRootPath := util.VersionedPath("root.json", nPlusOne)
+		nPlusOneRootMetadata, err := c.downloadMetaUnsafe(nPlusOneRootPath, defaultRootDownloadLimit)
 		if err != nil {
 			// stop when the next root can't be downloaded
 			// hosseinsia: Instead, check the error type,
@@ -307,24 +307,22 @@ func (c *Client) updateRoots() error {
 
 		// 5.3.4 Check for an arbitrary software attack.
 		// FIXME: clarify difference between signed and the whole (including signatures) metadata.
-		nthRootMetadataSigned := &data.Root{}
-
+		nPlusOnethRootMetadataSigned := &data.Root{}
 		// 5.3.4.1 Check that N signed N+1
-		if err := c.db.Unmarshal(nthRootMetadata, nthRootMetadataSigned, "root", c.rootVer); err != nil {
+		if err := c.db.Unmarshal(nPlusOneRootMetadata, nPlusOnethRootMetadataSigned, "root", c.rootVer); err != nil {
 			// NOTE: ignore ONLY expiration error; see 5.3.10
 			if _, ok := err.(verify.ErrExpired); !ok {
 				return err
 			}
 		}
-
 		//no need TODO: 5.3.7 Set the trusted root metadata file to the new root metadata file.
 		//no need TODO: 5.3.4.2 check that N+1 signed itself
 
 		// 5.3.5 Check for a rollback attack.
-		if nthRootMetadataSigned.Version != n {
+		if nPlusOnethRootMetadataSigned.Version != nPlusOne {
 			return ErrWrongRootVersion{
-				DownloadedVersion: nthRootMetadataSigned.Version,
-				ExpectedVersion:   n,
+				DownloadedVersion: nPlusOnethRootMetadataSigned.Version,
+				ExpectedVersion:   nPlusOne,
 			}
 		}
 
@@ -333,25 +331,27 @@ func (c *Client) updateRoots() error {
 		// it in step 5.3.10.
 
 		// 5.3.8 Persist root metadata.
-		c.rootVer = nthRootMetadataSigned.Version
-		c.consistentSnapshot = nthRootMetadataSigned.ConsistentSnapshot
-		if err := c.local.SetMeta("root.json", nthRootMetadata); err != nil {
+		c.rootVer = nPlusOnethRootMetadataSigned.Version
+		c.consistentSnapshot = nPlusOnethRootMetadataSigned.ConsistentSnapshot
+		if err := c.local.SetMeta("root.json", nPlusOneRootMetadata); err != nil {
 			return err
 		}
 
 		// 5.3.4.2 check that N+1 signed itself.
 		if err := c.getLocalMeta(); err != nil {
 			if _, ok := err.(verify.ErrExpired); !ok {
-				return verify.ErrInvalid
+				return ErrInvalidSignature{}
 			}
 		}
 		// 5.3.9 Repeat steps 5.3.2 to 5.3.9
 	}
-
 	// 5.3.10 Check for a freeze attack.
-
-	// Explicitly check the client's datetime vs. root versions' timestamp.
-	//if time.Now().Sub(c.local.GetMeta("timestamp")) >= 0 {
+	// Is this right?
+	if err := c.getLocalMeta(); err != nil {
+		if _, ok := err.(verify.ErrExpired); ok {
+			return err
+		}
+	}
 
 	// 5.3.11 If the timestamp and / or snapshot keys have been rotated,
 	// then delete the trusted timestamp and snapshot metadata files.

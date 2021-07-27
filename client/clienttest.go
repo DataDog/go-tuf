@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/theupdateframework/go-tuf/data"
+	"github.com/theupdateframework/go-tuf/verify"
 )
 
 //Initializes a local HTTP server and serves TUF Repo.
@@ -20,8 +21,45 @@ func initTestTUFRepoServer(baseDir string, relPath string) (net.Listener, error)
 	return l, err
 }
 
+// Initializes the client object with local files without fetching
+// the latest version from the server.
+func (c *Client) initWithLocal(rootKeys []*data.Key, threshold int, localrootpath string) error {
+	if len(rootKeys) < threshold {
+		return ErrInsufficientKeys
+	}
+	rootJSON, err := ioutil.ReadFile(localrootpath) //c.downloadMetaUnsafe("root.json", defaultRootDownloadLimit)
+	if err != nil {
+		return err
+	}
+	// create a new key database, and add all the public `rootKeys` to it.
+	c.db = verify.NewDB()
+	rootKeyIDs := make([]string, 0, len(rootKeys))
+	for _, key := range rootKeys {
+		for _, id := range key.IDs() {
+			rootKeyIDs = append(rootKeyIDs, id)
+			if err := c.db.AddKey(id, key); err != nil {
+				return err
+			}
+		}
+	}
+
+	// add a mock "root" role that trusts the passed in key ids. These keys
+	// will be used to verify the `root.json` we just fetched.
+	role := &data.Role{Threshold: threshold, KeyIDs: rootKeyIDs}
+	if err := c.db.AddRole("root", role); err != nil {
+		return err
+	}
+
+	// verify that the new root is valid.
+	if err := c.decodeRoot(rootJSON); err != nil {
+		return err
+	}
+
+	return c.local.SetMeta("root.json", rootJSON)
+}
+
 //Initializes a TUF Client based on metadata in a given path.
-func initTestTUFClient(baseDir string, relPath string, serverAddr string) (*Client, error) {
+func initTestTUFClient(baseDir string, relPath string, serverAddr string, initWithLocalMetadata bool) (*Client, error) {
 	initialStateDir := filepath.Join(baseDir, relPath)
 	opts := &HTTPRemoteOptions{
 		MetadataPath: "metadata",
@@ -53,8 +91,14 @@ func initTestTUFClient(baseDir string, relPath string, serverAddr string) (*Clie
 	}
 	c := NewClient(MemoryLocalStore(), remote)
 
-	if err := c.Init(keys, 1); err != nil {
-		return nil, err
+	if initWithLocalMetadata {
+		if err := c.initWithLocal(keys, 1, initialStateDir+"/"+"root.json"); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := c.Init(keys, 1); err != nil {
+			return nil, err
+		}
 	}
 	files, err := ioutil.ReadDir(initialStateDir)
 	if err != nil {
