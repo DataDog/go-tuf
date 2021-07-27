@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
+	"strings"
 
 	"github.com/theupdateframework/go-tuf/data"
 	"github.com/theupdateframework/go-tuf/util"
@@ -312,6 +313,9 @@ func (c *Client) updateRoots() error {
 		if err := c.db.Unmarshal(nPlusOneRootMetadata, nPlusOnethRootMetadataSigned, "root", c.rootVer); err != nil {
 			// NOTE: ignore ONLY expiration error; see 5.3.10
 			if _, ok := err.(verify.ErrExpired); !ok {
+				if strings.Contains(err.Error(), "signature verification failed") {
+					return ErrInvalidSignature{}
+				}
 				return err
 			}
 		}
@@ -339,9 +343,10 @@ func (c *Client) updateRoots() error {
 
 		// 5.3.4.2 check that N+1 signed itself.
 		if err := c.getLocalMeta(); err != nil {
-			if _, ok := err.(verify.ErrExpired); !ok {
+			if strings.Contains(err.Error(), "signature verification failed") {
 				return ErrInvalidSignature{}
 			}
+			return err
 		}
 		// 5.3.9 Repeat steps 5.3.2 to 5.3.9
 	}
@@ -352,8 +357,7 @@ func (c *Client) updateRoots() error {
 			return err
 		}
 	}
-
-	// 5.3.11 If the timestamp and / or snapshot keys have been rotated,
+	// FIXME: 5.3.11 If the timestamp and / or snapshot keys have been rotated,
 	// then delete the trusted timestamp and snapshot metadata files.
 
 	// 5.3.12 Set whether consistent snapshots are used as per the trusted root metadata file

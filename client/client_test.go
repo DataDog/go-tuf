@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strconv"
 	"testing"
 	"time"
 
@@ -372,10 +371,15 @@ func (s *ClientSuite) TestNewRoot(c *C) {
 }
 
 // Test helper
-func initTestClient(c *C, baseDir string, initWithLocalMetadata bool) (*Client, func() error) {
+func initTestClient(c *C, baseDir string, initWithLocalMetadata bool, ignoreExpired bool) (*Client, func() error) {
 	l, err := initTestTUFRepoServer(baseDir, "server")
 	c.Assert(err, IsNil)
+	e := verify.IsExpired
+	if ignoreExpired {
+		verify.IsExpired = func(t time.Time) bool { return false }
+	}
 	tufClient, err := initTestTUFClient(baseDir, "client/metadata/current", l.Addr().String(), initWithLocalMetadata)
+	verify.IsExpired = e
 	c.Assert(err, IsNil)
 	return tufClient, l.Close
 }
@@ -383,31 +387,44 @@ func initTestClient(c *C, baseDir string, initWithLocalMetadata bool) (*Client, 
 // Tests updateRoots method.
 func (s *ClientSuite) TestUpdateRoot(c *C) {
 	var tests = []struct {
-		fixturePath          string
-		rootUpdater          bool
-		isExpiredReturnValue string // Any value other than true or false will be considered nil.
-		// Fakes the verify.IsExpired to return this value.
-		// Set to nil if no change is required.
-		extpectedError error
+		fixturePath         string
+		rootUpdater         bool
+		isExpired           bool // Expect verify.IsExpired to return this value the test.
+		extpectedError      error
+		expectedRootVersion int // -1 means no check is performed on this.
 	}{
-		{"testdata/PublishedTwiceWithRotatedKeys_root", true, "false", nil},
-		{"testdata/PublishTwiceStaleVersionNumberWithRotatedKeys_root", true, "false", ErrWrongRootVersion{1, 2}},
-		{"testdata/PublishedTwiceInvalidNewRootSignatureWithRotatedKeys_root", true, "false", ErrInvalidSignature{}},
+		// Good new root update succeeds (the timestamp check disabled).
+		{"testdata/PublishedTwiceWithRotatedKeys_root", true, false, nil, 2},
+		// Updating with an expired root fails.
+		{"testdata/PublishedTwiceWithRotatedKeys_root", true, true, verify.ErrExpired{}, -1},
+		// Root update does not happen with rootUpdater set to false.
+		{"testdata/PublishedTwiceWithStaleVersion_root", false, false, nil, 1},
+		// New root update with a worng version number (potentially rollback attack) fails.
+		{"testdata/PublishedTwiceWithStaleVersion_root", true, false, ErrWrongRootVersion{1, 2}, -1},
+		// New root with invalid new root signature fails.
+		{"testdata/PublishedTwiceInvalidNewRootSignatureWithRotatedKeys_root", true, false, ErrInvalidSignature{}, -1},
+		// New root with invalid old root signature fails.
+		{"testdata/PublishedTwiceInvalidOldRootSignatureWithRotatedKeys_root", true, false, ErrInvalidSignature{}, -1},
 	}
 
 	for _, test := range tests {
 		e := verify.IsExpired
-		if isExpiredReturnValue, err := strconv.ParseBool(test.isExpiredReturnValue); err == nil {
-			verify.IsExpired = func(t time.Time) bool { return isExpiredReturnValue }
-		}
+		verify.IsExpired = func(t time.Time) bool { return test.isExpired }
 
-		tufClient, closer := initTestClient(c, test.fixturePath, true)
+		tufClient, closer := initTestClient(c, test.fixturePath /* initWithLocalMetadata = */, true /* ignoreExpired = */, true)
 		tufClient.ChainedRootUpdater = test.rootUpdater
 		_, err := tufClient.Update()
 		if test.extpectedError == nil {
 			c.Assert(err, IsNil)
+			// Check if the local root.json is updated.
+			assert.Equal(c, test.expectedRootVersion, tufClient.RootVersion())
 		} else {
-			assert.Equal(c, test.extpectedError, err)
+			if _, ok := err.(verify.ErrExpired); ok {
+				_, ok := test.extpectedError.(verify.ErrExpired)
+				assert.True(c, ok)
+			} else {
+				assert.Equal(c, test.extpectedError, err)
+			}
 		}
 		closer()
 		verify.IsExpired = e
