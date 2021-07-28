@@ -145,15 +145,6 @@ func (s *ClientSuite) withMetaExpired(f func()) {
 	f()
 }
 
-func (s *ClientSuite) withMetaNotExpired(f func()) {
-	e := verify.IsExpired
-	defer func() { verify.IsExpired = e }()
-	verify.IsExpired = func(t time.Time) bool {
-		return false
-	}
-	f()
-}
-
 func (s *ClientSuite) syncLocal(c *C) {
 	meta, err := s.store.GetMeta()
 	c.Assert(err, IsNil)
