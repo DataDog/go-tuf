@@ -307,7 +307,6 @@ func (c *Client) updateRoots() error {
 		}
 
 		// 5.3.4 Check for an arbitrary software attack.
-		// FIXME: clarify difference between signed and the whole (including signatures) metadata.
 		nPlusOnethRootMetadataSigned := &data.Root{}
 		// 5.3.4.1 Check that N signed N+1
 		if err := c.db.Unmarshal(nPlusOneRootMetadata, nPlusOnethRootMetadataSigned, "root", c.rootVer); err != nil {
@@ -319,8 +318,6 @@ func (c *Client) updateRoots() error {
 				return err
 			}
 		}
-		//no need TODO: 5.3.7 Set the trusted root metadata file to the new root metadata file.
-		//no need TODO: 5.3.4.2 check that N+1 signed itself
 
 		// 5.3.5 Check for a rollback attack.
 		if nPlusOnethRootMetadataSigned.Version != nPlusOne {
@@ -351,7 +348,6 @@ func (c *Client) updateRoots() error {
 		// 5.3.9 Repeat steps 5.3.2 to 5.3.9
 	}
 	// 5.3.10 Check for a freeze attack.
-	// Is this right?
 	if err := c.getLocalMeta(); err != nil {
 		if _, ok := err.(verify.ErrExpired); ok {
 			return err
