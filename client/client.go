@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
-	"strings"
+	"reflect"
+	"sort"
 
 	"github.com/theupdateframework/go-tuf/data"
 	"github.com/theupdateframework/go-tuf/util"
@@ -266,15 +268,32 @@ func (c *Client) update(latestRoot bool) (data.TargetFiles, error) {
 func (c *Client) updateRoots() error {
 	// https://theupdateframework.github.io/specification/v1.0.19/index.html#load-trusted-root
 
-	// 5.2. Load the trusted root metadata file. We assume that a good,
+	// 5.2 Load the trusted root metadata file. We assume that a good,
 	// trusted copy of this file was shipped with the package manager
 	// or software updater using an out-of-band process. Note that
 	// the expiration of the trusted root metadata file does not
 	// matter, because we will attempt to update it in the next step.
-
 	if err := c.getLocalMeta(); err != nil {
-		return err
+		if _, ok := err.(verify.ErrExpired); !ok {
+			return err
+		}
 	}
+	startTimestampKeyIDs := make([]string, 0)
+	for k := range c.db.GetRole("timestamp").KeyIDs {
+		startTimestampKeyIDs = append(startTimestampKeyIDs, k)
+	}
+	sort.Strings(startTimestampKeyIDs)
+
+	startSnapshotKeyIDs := make([]string, 0)
+	for k := range c.db.GetRole("snapshot").KeyIDs {
+		startSnapshotKeyIDs = append(startSnapshotKeyIDs, k)
+	}
+	sort.Strings(startSnapshotKeyIDs)
+
+	consistentSnapshot := c.consistentSnapshot
+	// 5.3.1 Temorarily turn on the consistent snapshots in order to download
+	// versioned root metadata files as described next.
+	c.consistentSnapshot = true
 
 	// https://theupdateframework.github.io/specification/v1.0.19/index.html#update-root
 
@@ -287,19 +306,18 @@ func (c *Client) updateRoots() error {
 	// temporarily turn on consistent snapshots in order to
 	// download versioned root metadata files as described next.
 
-	// This loop returns on error and breaks after downloading the lastest root metadata:
-	// (i) real error (timestamp expiration, decode fail, etc)
-	// (ii) missing root metadata version X (the latest version is being fetched already)
+	// This loop returns on error or breaks after downloading the lastest root metadata.
 	// 5.3.2 Let N denote the version number of the trusted root metadata file.
-	for nPlusOne := c.rootVer + 1; nPlusOne < c.UpdaterMaxRoots; nPlusOne++ {
-		// 5.3.3 Try downloading version nPlusOne (N+1) of the root metadata file
+	for i := 0; i < c.UpdaterMaxRoots; i++ {
+
+		n, nPlusOne := c.rootVer, c.rootVer+1
+		// 5.3.3 Try downloading version nPlusOne of the root metadata file.
 		nPlusOneRootPath := util.VersionedPath("root.json", nPlusOne)
 		nPlusOneRootMetadata, err := c.downloadMetaUnsafe(nPlusOneRootPath, defaultRootDownloadLimit)
+		//fmt.Println(string(nPlusOneRootMetadata[:]))
 		if err != nil {
-			// stop when the next root can't be downloaded
-			// hosseinsia: Instead, check the error type,
-			// then check for the expiration dates
 			if _, ok := err.(ErrMissingRemoteMetadata); ok {
+				// stop when the next root can't be downloaded
 				break
 			} else {
 				return err
@@ -307,42 +325,36 @@ func (c *Client) updateRoots() error {
 		}
 
 		// 5.3.4 Check for an arbitrary software attack.
-		nPlusOnethRootMetadataSigned := &data.Root{}
+		nPlusOneRootMetadataSigned := &data.Root{}
 		// 5.3.4.1 Check that N signed N+1
-		if err := c.db.Unmarshal(nPlusOneRootMetadata, nPlusOnethRootMetadataSigned, "root", c.rootVer); err != nil {
-			// NOTE: ignore ONLY expiration error; see 5.3.10
+		// 5.3.5 Check for a rollback attack. Unmarshal also checks for ErrLowVersion.
+		if err := c.db.UnmarshalExpired(nPlusOneRootMetadata, nPlusOneRootMetadataSigned, "root", n); err != nil {
+			// 5.3.6 Note that the expiration of the new (intermediate) root
+			// metadata file does not matter yet, because we will check for
+			// it in step 5.3.10.
 			if _, ok := err.(verify.ErrExpired); !ok {
-				if strings.Contains(err.Error(), "signature verification failed") {
-					return ErrInvalidSignature{}
-				}
 				return err
 			}
 		}
 
 		// 5.3.5 Check for a rollback attack.
-		if nPlusOnethRootMetadataSigned.Version != nPlusOne {
+		if nPlusOneRootMetadataSigned.Version != nPlusOne {
 			return ErrWrongRootVersion{
-				DownloadedVersion: nPlusOnethRootMetadataSigned.Version,
+				DownloadedVersion: nPlusOneRootMetadataSigned.Version,
 				ExpectedVersion:   nPlusOne,
 			}
 		}
 
-		// 5.3.6 Note that the expiration of the new (intermediate) root
-		// metadata file does not matter yet, because we will check for
-		// it in step 5.3.10.
-
-		// 5.3.8 Persist root metadata.
-		c.rootVer = nPlusOnethRootMetadataSigned.Version
-		c.consistentSnapshot = nPlusOnethRootMetadataSigned.ConsistentSnapshot
+		// 5.3.7 Set the trusted root metadata file to the new root metadata file.
+		c.rootVer = nPlusOneRootMetadataSigned.Version
+		consistentSnapshot = nPlusOneRootMetadataSigned.ConsistentSnapshot
+		// 5.3.8 Persist root metadata. The client MUST write the file to non-volatile storage as FILENAME.EXT (e.g. root.json).
 		if err := c.local.SetMeta("root.json", nPlusOneRootMetadata); err != nil {
 			return err
 		}
 
 		// 5.3.4.2 check that N+1 signed itself.
 		if err := c.getLocalMeta(); err != nil {
-			if strings.Contains(err.Error(), "signature verification failed") {
-				return ErrInvalidSignature{}
-			}
 			return err
 		}
 		// 5.3.9 Repeat steps 5.3.2 to 5.3.9
@@ -355,8 +367,30 @@ func (c *Client) updateRoots() error {
 	}
 	// FIXME: 5.3.11 If the timestamp and / or snapshot keys have been rotated,
 	// then delete the trusted timestamp and snapshot metadata files.
+	// To figure out if the keys are rotated, compare the timestamp/snapshot keys
+	// from when you first started, to the last one you ended up with.
 
-	// 5.3.12 Set whether consistent snapshots are used as per the trusted root metadata file
+	endTimestampKeyIDs := make([]string, 0)
+	for k := range c.db.GetRole("timestamp").KeyIDs {
+		endTimestampKeyIDs = append(endTimestampKeyIDs, k)
+	}
+	sort.Strings(endTimestampKeyIDs)
+
+	endSnapshotKeyIDs := make([]string, 0)
+	for k := range c.db.GetRole("snapshot").KeyIDs {
+		endSnapshotKeyIDs = append(endSnapshotKeyIDs, k)
+	}
+	sort.Strings(endSnapshotKeyIDs)
+
+	if !reflect.DeepEqual(startTimestampKeyIDs, endTimestampKeyIDs) ||
+		!reflect.DeepEqual(startSnapshotKeyIDs, endSnapshotKeyIDs) {
+		fmt.Println("Things has changed!")
+		c.local.SetMeta("snapshot", json.RawMessage{})
+		c.local.SetMeta("timestamp", json.RawMessage{})
+	}
+
+	// 5.3.12 Set whether consistent snapshots are used as per the trusted root metadata file.
+	c.consistentSnapshot = consistentSnapshot
 	return nil
 }
 

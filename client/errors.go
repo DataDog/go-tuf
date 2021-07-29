@@ -153,9 +153,3 @@ type ErrWrongRootVersion struct {
 func (e ErrWrongRootVersion) Error() string {
 	return fmt.Sprintf("tuf: wrong root version downloaded expected %d got %d", e.ExpectedVersion, e.DownloadedVersion)
 }
-
-type ErrInvalidSignature struct{}
-
-func (e ErrInvalidSignature) Error() string {
-	return "tuf: signature verification failed"
-}
