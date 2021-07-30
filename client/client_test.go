@@ -381,7 +381,7 @@ func (s *ClientSuite) TestUpdateRoot(c *C) {
 	var tests = []struct {
 		fixturePath                   string
 		rootUpdater                   bool
-		isExpired                     bool // Expect verify.IsExpired to return this value the test.
+		isExpired                     bool // Value retuned by verify.IsExpired.
 		extpectedError                error
 		expectedRootVersion           int // -1 means no check is performed on this.
 		expectNonRootMetadataDeletion bool
@@ -389,16 +389,18 @@ func (s *ClientSuite) TestUpdateRoot(c *C) {
 		// Good new root update succeeds (the timestamp check disabled).
 		{"testdata/PublishedTwiceWithRotatedKeys_root", true, false, nil, 2, false},
 		// Good new root update with a new key for timestamp succeeds (the timestamp check disabled), and timestamp and snapshot metadata deleted.
-		{"testdata/PublishedTwiceRotateTimestampKeysWithRotatedKeys_root", true, false, nil, 2, true},
-		// Updating with an expired root fails.
+		{"testdata/PublishedTwiceRotateTimestampKeysWithRotatedKeys_root", true, false, ErrEmptyTimestampOrSnapshot, 2, true},
+		// Good update but with an expired root fails.
 		{"testdata/PublishedTwiceWithRotatedKeys_root", true, true, verify.ErrExpired{}, -1, false},
-		// Root update does not happen with rootUpdater set to false.
+		// Bad update does not happen with rootUpdater set to false.
 		{"testdata/PublishedTwiceWithStaleVersion_root", false, false, nil, 1, false},
-		// New root update with a worng version number (potentially rollback attack) fails.
-		{"testdata/PublishedTwiceWithStaleVersion_root", true, false, ErrWrongRootVersion{1, 2}, -1, false},
-		// New root with invalid new root signature fails.
+		// Bad root update with a rollback attack fails.
+		{"testdata/PublishedTwiceWithStaleVersion_root", true, false, verify.ErrLowVersion{Actual: 1, Current: 2}, -1, false},
+		//Bad root update with fast forward attack fails.
+		{"testdata/PublishedTwiceForwardVersionWithRotatedKeys_root", true, false, verify.ErrWrongVersion(verify.ErrWrongVersion{Given: 3, Expected: 2}), -1, false},
+		// Bad root with invalid new root signature fails.
 		{"testdata/PublishedTwiceInvalidNewRootSignatureWithRotatedKeys_root", true, false, errors.New("tuf: signature verification failed"), -1, false},
-		// New root with invalid old root signature fails.
+		// Bad root with invalid old root signature fails.
 		{"testdata/PublishedTwiceInvalidOldRootSignatureWithRotatedKeys_root", true, false, errors.New("tuf: signature verification failed"), -1, false},
 	}
 
@@ -412,10 +414,10 @@ func (s *ClientSuite) TestUpdateRoot(c *C) {
 		_, err := tufClient.Update()
 		if test.extpectedError == nil {
 			c.Assert(err, IsNil)
-			// Check if the local root.json is updated.
+			// Check if the root.json is being saved in non-volatile storage.
 			tufClient.getLocalMeta()
 			assert.Equal(c, test.expectedRootVersion, tufClient.RootVersion())
-			// Check the timestamp and metadata deletion
+			// Check the timestamp and metadata deletion.
 			if test.expectNonRootMetadataDeletion {
 				if m, err := tufClient.local.GetMeta(); err == nil {
 					assert.Equal(c, m["timestamp"], json.RawMessage{})

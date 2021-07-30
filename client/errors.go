@@ -8,9 +8,10 @@ import (
 )
 
 var (
-	ErrNoRootKeys       = errors.New("tuf: no root keys found in local meta store")
-	ErrInsufficientKeys = errors.New("tuf: insufficient keys to meet threshold")
-	ErrNoLocalSnapshot  = errors.New("tuf: no snapshot stored locally")
+	ErrNoRootKeys               = errors.New("tuf: no root keys found in local meta store")
+	ErrInsufficientKeys         = errors.New("tuf: insufficient keys to meet threshold")
+	ErrNoLocalSnapshot          = errors.New("tuf: no snapshot stored locally")
+	ErrEmptyTimestampOrSnapshot = errors.New("tuf: Timestamp or snapshot is empty")
 )
 
 type ErrMissingRemoteMetadata struct {

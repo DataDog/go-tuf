@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"reflect"
@@ -278,21 +277,23 @@ func (c *Client) updateRoots() error {
 			return err
 		}
 	}
-	startTimestampKeyIDs := make([]string, 0)
-	for k := range c.db.GetRole("timestamp").KeyIDs {
-		startTimestampKeyIDs = append(startTimestampKeyIDs, k)
-	}
-	sort.Strings(startTimestampKeyIDs)
 
-	startSnapshotKeyIDs := make([]string, 0)
-	for k := range c.db.GetRole("snapshot").KeyIDs {
-		startSnapshotKeyIDs = append(startSnapshotKeyIDs, k)
+	// Prepare for 5.3.11: If the timestamp and / or snapshot keys have been rotated,
+	// then delete the trusted timestamp and snapshot metadata files.
+	getKeyIDs := func(role string) []string {
+		keyIDs := make([]string, 0, len(c.db.GetRole("timestamp").KeyIDs))
+		for k := range c.db.GetRole(role).KeyIDs {
+			keyIDs = append(keyIDs, k)
+		}
+		sort.Strings(keyIDs)
+		return keyIDs
 	}
-	sort.Strings(startSnapshotKeyIDs)
+	startTimestampKeyIDs := getKeyIDs("timestamp")
+	startSnapshotKeyIDs := getKeyIDs("snapshot")
 
-	consistentSnapshot := c.consistentSnapshot
 	// 5.3.1 Temorarily turn on the consistent snapshots in order to download
 	// versioned root metadata files as described next.
+	consistentSnapshot := c.consistentSnapshot
 	c.consistentSnapshot = true
 
 	// https://theupdateframework.github.io/specification/v1.0.19/index.html#update-root
@@ -309,9 +310,9 @@ func (c *Client) updateRoots() error {
 	// This loop returns on error or breaks after downloading the lastest root metadata.
 	// 5.3.2 Let N denote the version number of the trusted root metadata file.
 	for i := 0; i < c.UpdaterMaxRoots; i++ {
-
-		n, nPlusOne := c.rootVer, c.rootVer+1
 		// 5.3.3 Try downloading version nPlusOne of the root metadata file.
+		// NOTE: as a side effect, we do update c.rootVer to nPlusOne between iterations.
+		nPlusOne := c.rootVer + 1
 		nPlusOneRootPath := util.VersionedPath("root.json", nPlusOne)
 		nPlusOneRootMetadata, err := c.downloadMetaUnsafe(nPlusOneRootPath, defaultRootDownloadLimit)
 		//fmt.Println(string(nPlusOneRootMetadata[:]))
@@ -327,8 +328,8 @@ func (c *Client) updateRoots() error {
 		// 5.3.4 Check for an arbitrary software attack.
 		nPlusOneRootMetadataSigned := &data.Root{}
 		// 5.3.4.1 Check that N signed N+1
-		// 5.3.5 Check for a rollback attack. Unmarshal also checks for ErrLowVersion.
-		if err := c.db.UnmarshalExpired(nPlusOneRootMetadata, nPlusOneRootMetadataSigned, "root", n); err != nil {
+		// 5.3.5 Check for a rollback attack. Here, we check that nPlusOneRootMetadataSigned.version >= nPlusOne.
+		if err := c.db.UnmarshalExpired(nPlusOneRootMetadata, nPlusOneRootMetadataSigned, "root", nPlusOne); err != nil {
 			// 5.3.6 Note that the expiration of the new (intermediate) root
 			// metadata file does not matter yet, because we will check for
 			// it in step 5.3.10.
@@ -337,56 +338,57 @@ func (c *Client) updateRoots() error {
 			}
 		}
 
-		// 5.3.5 Check for a rollback attack.
+		// 5.3.5 Following up, we check for a fast-forward attack: here, we check for that nPlusOneRootMetadataSigned.version >= nPlusOne.
 		if nPlusOneRootMetadataSigned.Version != nPlusOne {
-			return ErrWrongRootVersion{
-				DownloadedVersion: nPlusOneRootMetadataSigned.Version,
-				ExpectedVersion:   nPlusOne,
+			return verify.ErrWrongVersion{
+				Given:    nPlusOneRootMetadataSigned.Version,
+				Expected: nPlusOne,
 			}
 		}
 
 		// 5.3.7 Set the trusted root metadata file to the new root metadata file.
 		c.rootVer = nPlusOneRootMetadataSigned.Version
+		// NOTE: following up on 5.3.1, we want to always have consistent snapshots on for the duration
+		// of root rotation. AFTER the rotation is over, we will set it to the value of the last root.
 		consistentSnapshot = nPlusOneRootMetadataSigned.ConsistentSnapshot
 		// 5.3.8 Persist root metadata. The client MUST write the file to non-volatile storage as FILENAME.EXT (e.g. root.json).
+		// NOTE: Internally, setMeta stores metadata in LevelDB in a persistent manner.
 		if err := c.local.SetMeta("root.json", nPlusOneRootMetadata); err != nil {
 			return err
 		}
 
 		// 5.3.4.2 check that N+1 signed itself.
 		if err := c.getLocalMeta(); err != nil {
-			return err
+			// 5.3.6 Note that the expiration of the new (intermediate) root
+			// metadata file does not matter yet, because we will check for
+			// it in step 5.3.10.
+			if _, ok := err.(verify.ErrExpired); !ok {
+				return err
+			}
 		}
+
 		// 5.3.9 Repeat steps 5.3.2 to 5.3.9
 	}
+
 	// 5.3.10 Check for a freeze attack.
+	// NOTE: this will check for any, including freeze, attack.
 	if err := c.getLocalMeta(); err != nil {
-		if _, ok := err.(verify.ErrExpired); ok {
-			return err
-		}
+		return err
 	}
-	// FIXME: 5.3.11 If the timestamp and / or snapshot keys have been rotated,
+
+	// 5.3.11 If the timestamp and / or snapshot keys have been rotated,
 	// then delete the trusted timestamp and snapshot metadata files.
 	// To figure out if the keys are rotated, compare the timestamp/snapshot keys
-	// from when you first started, to the last one you ended up with.
-
-	endTimestampKeyIDs := make([]string, 0)
-	for k := range c.db.GetRole("timestamp").KeyIDs {
-		endTimestampKeyIDs = append(endTimestampKeyIDs, k)
-	}
-	sort.Strings(endTimestampKeyIDs)
-
-	endSnapshotKeyIDs := make([]string, 0)
-	for k := range c.db.GetRole("snapshot").KeyIDs {
-		endSnapshotKeyIDs = append(endSnapshotKeyIDs, k)
-	}
-	sort.Strings(endSnapshotKeyIDs)
+	// of start root and end root.
+	//endTimestampKeyIDs := someFunc(c.db.GetRole("timestamp").KeyIDs)
+	endTimestampKeyIDs := getKeyIDs("timestamp")
+	endSnapshotKeyIDs := getKeyIDs("snapshot")
 
 	if !reflect.DeepEqual(startTimestampKeyIDs, endTimestampKeyIDs) ||
 		!reflect.DeepEqual(startSnapshotKeyIDs, endSnapshotKeyIDs) {
-		fmt.Println("Things has changed!")
 		c.local.SetMeta("snapshot", json.RawMessage{})
 		c.local.SetMeta("timestamp", json.RawMessage{})
+		return ErrEmptyTimestampOrSnapshot
 	}
 
 	// 5.3.12 Set whether consistent snapshots are used as per the trusted root metadata file.
