@@ -3,14 +3,18 @@ package client
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	cjson "github.com/tent/canonical-json-go"
 	tuf "github.com/theupdateframework/go-tuf"
 	"github.com/theupdateframework/go-tuf/data"
@@ -298,7 +302,7 @@ func (s *ClientSuite) TestNoChangeUpdate(c *C) {
 	_, err := client.Update()
 	c.Assert(err, IsNil)
 	_, err = client.Update()
-	c.Assert(IsLatestSnapshot(err), Equals, true)
+	c.Assert(err, IsNil)
 }
 
 func (s *ClientSuite) TestNewTimestamp(c *C) {
@@ -308,7 +312,7 @@ func (s *ClientSuite) TestNewTimestamp(c *C) {
 	c.Assert(s.repo.Timestamp(), IsNil)
 	s.syncRemote(c)
 	_, err := client.Update()
-	c.Assert(IsLatestSnapshot(err), Equals, true)
+	c.Assert(err, IsNil)
 	c.Assert(client.timestampVer > version, Equals, true)
 }
 
@@ -357,6 +361,113 @@ func (s *ClientSuite) TestNewRoot(c *C) {
 		role := client.db.GetRole(name)
 		c.Assert(role, NotNil)
 		c.Assert(role.KeyIDs, DeepEquals, util.StringSliceToSet(ids))
+	}
+}
+
+// startTUFRepoServer starts a HTTP server to serve a TUF Repo.
+func startTUFRepoServer(baseDir string, relPath string) (net.Listener, error) {
+	serverDir := filepath.Join(baseDir, relPath)
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	go http.Serve(l, http.FileServer(http.Dir(serverDir)))
+	return l, err
+}
+
+// newClientWithMeta creates new client and sets the root metadata for it.
+func newClientWithMeta(baseDir string, relPath string, serverAddr string, initWithLocalMetadata bool) (*Client, error) {
+	initialStateDir := filepath.Join(baseDir, relPath)
+	opts := &HTTPRemoteOptions{
+		MetadataPath: "metadata",
+		TargetsPath:  "targets",
+	}
+
+	remote, err := HTTPRemoteStore(fmt.Sprintf("http://%s/", serverAddr), opts, nil)
+	if err != nil {
+		return nil, err
+	}
+	c := NewClient(MemoryLocalStore(), remote)
+	for _, m := range []string{"root.json", "snapshot.json", "timestamp.json", "targets.json"} {
+		metadataJSON, err := ioutil.ReadFile(initialStateDir + "/" + m)
+		if err != nil {
+			return nil, err
+		}
+		c.local.SetMeta(m, metadataJSON)
+	}
+	return c, nil
+}
+
+func initRootTest(c *C, baseDir string, initWithLocalMetadata bool, ignoreExpired bool) (*Client, func() error) {
+	l, err := startTUFRepoServer(baseDir, "server")
+	c.Assert(err, IsNil)
+	e := verify.IsExpired
+	if ignoreExpired {
+		verify.IsExpired = func(t time.Time) bool { return false }
+	}
+	tufClient, err := newClientWithMeta(baseDir, "client/metadata/current", l.Addr().String(), initWithLocalMetadata)
+	verify.IsExpired = e
+	c.Assert(err, IsNil)
+	return tufClient, l.Close
+}
+
+func (s *ClientSuite) TestUpdateRoots(c *C) {
+	var tests = []struct {
+		fixturePath      string
+		isExpired        bool // Value retuned by verify.IsExpired.
+		expectedError    error
+		expectedVersions map[string]int
+	}{
+		// New root version update (no key update) succeeds.
+		{"testdata/PublishedTwice", false, nil, map[string]int{"root": 2, "timestamp": 1, "snapshot": 1, "targets": 1}},
+		// New root update (root role key rotation) succeeds.
+		{"testdata/PublishedTwiceWithRotatedKeys_root", false, nil, map[string]int{"root": 2, "timestamp": 1, "snapshot": 1, "targets": 1}},
+		// New root update (snapshot role key rotation) succeeds.
+		{"testdata/PublishedTwiceWithRotatedKeys_snapshot", false, nil, map[string]int{"root": 2, "timestamp": 2, "snapshot": 2, "targets": 1}},
+		// New root update (targets role key rotation) succeeds.
+		{"testdata/PublishedTwiceWithRotatedKeys_targets", false, nil, map[string]int{"root": 2, "timestamp": 2, "snapshot": 2, "targets": 2}},
+		// New root update (timestamp role key rotation) succeeds.
+		{"testdata/PublishedTwiceWithRotatedKeys_timestamp", false, nil, map[string]int{"root": 2, "timestamp": 2, "snapshot": 1, "targets": 1}},
+		// New expired root update fails.
+		{"testdata/PublishedTwiceWithRotatedKeys_root", true, ErrDecodeFailed{File: "root.json", Err: verify.ErrExpired{}}, map[string]int{}},
+		// New root update with a rollback attack fails.
+		{"testdata/PublishedTwiceWithStaleVersion_root", false, verify.ErrWrongVersion(verify.ErrWrongVersion{Given: 1, Expected: 2}), map[string]int{}},
+		// New root update with fast forward attack fails.
+		{"testdata/PublishedTwiceForwardVersionWithRotatedKeys_root", false, verify.ErrWrongVersion(verify.ErrWrongVersion{Given: 3, Expected: 2}), map[string]int{}},
+		// New root with invalid new root signature fails (n+1th root didn't sign off n+1).
+		{"testdata/PublishedTwiceInvalidNewRootSignatureWithRotatedKeys_root", false, errors.New("tuf: signature verification failed"), map[string]int{}},
+		// New root with invalid old root signature fails (nth root didn't sign off n+1).
+		{"testdata/PublishedTwiceInvalidOldRootSignatureWithRotatedKeys_root", false, errors.New("tuf: signature verification failed"), map[string]int{}},
+	}
+
+	for _, test := range tests {
+		e := verify.IsExpired
+		verify.IsExpired = func(t time.Time) bool { return test.isExpired }
+		tufClient, closer := initRootTest(c, test.fixturePath /* initWithLocalMetadata = */, true /* ignoreExpired = */, true)
+		_, err := tufClient.Update()
+		if test.expectedError == nil {
+			c.Assert(err, IsNil)
+			// Check if the root.json is being saved in non-volatile storage.
+			tufClient.getLocalMeta()
+			versionMethods := map[string]int{"root": tufClient.rootVer,
+				"timestamp": tufClient.timestampVer,
+				"snapshot":  tufClient.snapshotVer,
+				"targets":   tufClient.targetsVer}
+			for m, v := range test.expectedVersions {
+				assert.Equal(c, v, versionMethods[m])
+			}
+		} else {
+			// For backward compatibility, the update root returns
+			// ErrDecodeFailed that wraps the verify.ErrExpired.
+			if _, ok := test.expectedError.(ErrDecodeFailed); ok {
+				decodeErr, ok := err.(ErrDecodeFailed)
+				c.Assert(ok, Equals, true)
+				c.Assert(decodeErr.File, Equals, "root.json")
+				_, ok = decodeErr.Err.(verify.ErrExpired)
+				c.Assert(ok, Equals, true)
+			} else {
+				assert.Equal(c, test.expectedError, err)
+			}
+		}
+		closer()
+		verify.IsExpired = e
 	}
 }
 
@@ -560,6 +671,8 @@ func (s *ClientSuite) TestUpdateLocalRootExpired(c *C) {
 	s.addRemoteTarget(c, "bar.txt")
 	s.syncRemote(c)
 
+	const expectedRootVersion = 2
+
 	// check the update downloads the non expired remote root.json and
 	// restarts itself, thus successfully updating
 	s.withMetaExpired(func() {
@@ -567,10 +680,9 @@ func (s *ClientSuite) TestUpdateLocalRootExpired(c *C) {
 		if _, ok := err.(verify.ErrExpired); !ok {
 			c.Fatalf("expected err to have type signed.ErrExpired, got %T", err)
 		}
-
-		client := NewClient(s.local, s.remote)
 		_, err = client.Update()
 		c.Assert(err, IsNil)
+		c.Assert(client.rootVer, Equals, expectedRootVersion)
 	})
 }
 
@@ -704,7 +816,6 @@ func (s *ClientSuite) TestUpdateReplayAttack(c *C) {
 	c.Assert(s.repo.Timestamp(), IsNil)
 	s.syncRemote(c)
 	_, err := client.Update()
-	c.Assert(IsLatestSnapshot(err), Equals, true)
 	c.Assert(client.timestampVer > version, Equals, true)
 
 	// replace remote timestamp.json with the old one
