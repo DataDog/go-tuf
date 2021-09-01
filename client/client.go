@@ -17,7 +17,7 @@ import (
 
 const (
 	// This is the upper limit in bytes we will use to limit the download
-	// size of the root/timestamp roles, since we might not don't know how
+	// size of the root / timestamp roles, since we might not don't know how
 	// big it is.
 	defaultRootDownloadLimit      = 512000
 	defaultTimestampDownloadLimit = 16384
