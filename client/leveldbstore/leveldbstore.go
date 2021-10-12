@@ -6,7 +6,7 @@ import (
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/storage"
 
-	tuf_client "github.com/theupdateframework/go-tuf/client"
+	tuf_client "github.com/DataDog/go-tuf/client"
 )
 
 func FileLocalStore(path string) (tuf_client.LocalStore, error) {

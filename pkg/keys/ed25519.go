@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 
 	"github.com/pkg/errors"
-	"github.com/theupdateframework/go-tuf/data"
+	"github.com/DataDog/go-tuf/data"
 )
 
 func init() {

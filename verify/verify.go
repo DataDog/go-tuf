@@ -6,7 +6,7 @@ import (
 	"time"
 
 	cjson "github.com/tent/canonical-json-go"
-	"github.com/theupdateframework/go-tuf/data"
+	"github.com/DataDog/go-tuf/data"
 )
 
 type signedMeta struct {

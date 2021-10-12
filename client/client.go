@@ -8,9 +8,9 @@ import (
 	"io/ioutil"
 	"log"
 
-	"github.com/theupdateframework/go-tuf/data"
-	"github.com/theupdateframework/go-tuf/util"
-	"github.com/theupdateframework/go-tuf/verify"
+	"github.com/DataDog/go-tuf/data"
+	"github.com/DataDog/go-tuf/util"
+	"github.com/DataDog/go-tuf/verify"
 )
 
 const (

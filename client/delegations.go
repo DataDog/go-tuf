@@ -1,9 +1,9 @@
 package client
 
 import (
-	"github.com/theupdateframework/go-tuf/data"
-	"github.com/theupdateframework/go-tuf/internal/targets"
-	"github.com/theupdateframework/go-tuf/verify"
+	"github.com/DataDog/go-tuf/data"
+	"github.com/DataDog/go-tuf/internal/targets"
+	"github.com/DataDog/go-tuf/verify"
 )
 
 // getTargetFileMeta searches for a verified TargetFileMeta matching a target

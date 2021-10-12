@@ -12,11 +12,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	tuf "github.com/theupdateframework/go-tuf"
-	client "github.com/theupdateframework/go-tuf/client"
-	"github.com/theupdateframework/go-tuf/data"
-	"github.com/theupdateframework/go-tuf/pkg/keys"
-	"github.com/theupdateframework/go-tuf/util"
+	tuf "github.com/DataDog/go-tuf"
+	client "github.com/DataDog/go-tuf/client"
+	"github.com/DataDog/go-tuf/data"
+	"github.com/DataDog/go-tuf/pkg/keys"
+	"github.com/DataDog/go-tuf/util"
 	"golang.org/x/crypto/ed25519"
 	. "gopkg.in/check.v1"
 )

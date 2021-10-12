@@ -6,8 +6,8 @@ import (
 	"os"
 
 	"github.com/flynn/go-docopt"
-	tuf "github.com/theupdateframework/go-tuf/client"
-	"github.com/theupdateframework/go-tuf/data"
+	tuf "github.com/DataDog/go-tuf/client"
+	"github.com/DataDog/go-tuf/data"
 )
 
 func init() {

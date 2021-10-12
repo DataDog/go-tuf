@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/theupdateframework/go-tuf/data"
-	"github.com/theupdateframework/go-tuf/util"
-	"github.com/theupdateframework/go-tuf/verify"
+	"github.com/DataDog/go-tuf/data"
+	"github.com/DataDog/go-tuf/util"
+	"github.com/DataDog/go-tuf/verify"
 )
 
 func TestGetTargetMeta(t *testing.T) {

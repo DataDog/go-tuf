@@ -2,8 +2,8 @@ package sign
 
 import (
 	cjson "github.com/tent/canonical-json-go"
-	"github.com/theupdateframework/go-tuf/data"
-	"github.com/theupdateframework/go-tuf/pkg/keys"
+	"github.com/DataDog/go-tuf/data"
+	"github.com/DataDog/go-tuf/pkg/keys"
 )
 
 func Sign(s *data.Signed, k keys.Signer) error {
