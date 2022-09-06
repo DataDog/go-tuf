@@ -161,9 +161,10 @@ func (f Hashes) HashAlgorithms() []string {
 }
 
 type metapathFileMeta struct {
-	Length  int64  `json:"length,omitempty"`
-	Hashes  Hashes `json:"hashes,omitempty"`
-	Version int64  `json:"version"`
+	Length  int64            `json:"length,omitempty"`
+	Hashes  Hashes           `json:"hashes,omitempty"`
+	Version int64            `json:"version"`
+	Custom  *json.RawMessage `json:"custom,omitempty"`
 }
 
 type SnapshotFileMeta metapathFileMeta
