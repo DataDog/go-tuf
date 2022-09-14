@@ -178,6 +178,8 @@ type metapathFileMeta struct {
 	Custom  *json.RawMessage `json:"custom,omitempty"`
 }
 
+// SnapshotFileMeta is the meta field of a snapshot
+// Note: Contains a `custom` field
 type SnapshotFileMeta metapathFileMeta
 
 type SnapshotFiles map[string]SnapshotFileMeta
