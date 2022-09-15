@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 
 	"github.com/theupdateframework/go-tuf/data"
+	"github.com/theupdateframework/go-tuf/internal/roles"
 	"github.com/theupdateframework/go-tuf/util"
 	"github.com/theupdateframework/go-tuf/verify"
 )
@@ -461,6 +462,13 @@ func (c *Client) getLocalMeta() error {
 			c.loadTargets(targets.Targets)
 		}
 	}
+
+	for fileName := range meta {
+		if roles.IsDelegatedTargetsManifest(fileName) {
+			c.localMeta[fileName] = meta[fileName]
+		}
+	}
+
 	if loadFailed {
 		// If any of the metadata failed to be verified, return the reason for that failure
 		return retErr
