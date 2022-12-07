@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MIT OR Apache-2.0
 #
 # A modification of client.py from the Python implementation:
-# https://github.com/theupdateframework/tuf/blob/v0.11.1/tuf/scripts/client.py
+# https://github.com/DataDog/tuf/blob/v0.11.1/tuf/scripts/client.py
 
 """
 <Program Name>

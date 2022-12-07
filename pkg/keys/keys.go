@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/theupdateframework/go-tuf/data"
+	"github.com/DataDog/go-tuf/data"
 )
 
 // SignerMap stores mapping between key type strings and signer constructors.

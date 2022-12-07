@@ -3,7 +3,7 @@
 # A script to generate TUF repository files.
 #
 # A modification of generate.py from the Python implementation:
-# https://github.com/theupdateframework/tuf/blob/v0.9.9/tests/repository_data/generate.py
+# https://github.com/DataDog/tuf/blob/v0.9.9/tests/repository_data/generate.py
 
 import shutil
 import datetime

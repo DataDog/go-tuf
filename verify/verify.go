@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/DataDog/go-tuf/data"
+	"github.com/DataDog/go-tuf/internal/roles"
 	"github.com/secure-systems-lab/go-securesystemslib/cjson"
-	"github.com/theupdateframework/go-tuf/data"
-	"github.com/theupdateframework/go-tuf/internal/roles"
 )
 
 type signedMeta struct {

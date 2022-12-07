@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/DataDog/go-tuf"
 	"github.com/flynn/go-docopt"
-	"github.com/theupdateframework/go-tuf"
 )
 
 func init() {

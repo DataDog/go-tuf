@@ -14,15 +14,15 @@ import (
 	"testing"
 	"time"
 
+	tuf "github.com/DataDog/go-tuf"
+	"github.com/DataDog/go-tuf/data"
+	"github.com/DataDog/go-tuf/internal/sets"
+	"github.com/DataDog/go-tuf/pkg/keys"
+	"github.com/DataDog/go-tuf/sign"
+	"github.com/DataDog/go-tuf/util"
+	"github.com/DataDog/go-tuf/verify"
 	"github.com/secure-systems-lab/go-securesystemslib/cjson"
 	"github.com/stretchr/testify/assert"
-	tuf "github.com/theupdateframework/go-tuf"
-	"github.com/theupdateframework/go-tuf/data"
-	"github.com/theupdateframework/go-tuf/internal/sets"
-	"github.com/theupdateframework/go-tuf/pkg/keys"
-	"github.com/theupdateframework/go-tuf/sign"
-	"github.com/theupdateframework/go-tuf/util"
-	"github.com/theupdateframework/go-tuf/verify"
 	. "gopkg.in/check.v1"
 )
 

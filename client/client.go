@@ -7,10 +7,10 @@ import (
 	"io"
 	"io/ioutil"
 
-	"github.com/theupdateframework/go-tuf/data"
-	"github.com/theupdateframework/go-tuf/internal/roles"
-	"github.com/theupdateframework/go-tuf/util"
-	"github.com/theupdateframework/go-tuf/verify"
+	"github.com/DataDog/go-tuf/data"
+	"github.com/DataDog/go-tuf/internal/roles"
+	"github.com/DataDog/go-tuf/util"
+	"github.com/DataDog/go-tuf/verify"
 )
 
 const (
@@ -167,7 +167,7 @@ func (c *Client) InitLocal(rootJSON []byte) error {
 // Update downloads and verifies remote metadata and returns updated targets.
 // It always performs root update (5.2 and 5.3) section of the v1.0.19 spec.
 //
-// https://theupdateframework.github.io/specification/v1.0.19/index.html#load-trusted-root
+// https://DataDog.github.io/specification/v1.0.19/index.html#load-trusted-root
 func (c *Client) Update() (data.TargetFiles, error) {
 	if err := c.UpdateRoots(); err != nil {
 		if _, ok := err.(verify.ErrExpired); ok {
@@ -240,7 +240,7 @@ func (c *Client) Update() (data.TargetFiles, error) {
 }
 
 func (c *Client) UpdateRoots() error {
-	// https://theupdateframework.github.io/specification/v1.0.19/index.html#load-trusted-root
+	// https://DataDog.github.io/specification/v1.0.19/index.html#load-trusted-root
 	// 5.2 Load the trusted root metadata file. We assume that a good,
 	// trusted copy of this file was shipped with the package manager
 	// or software updater using an out-of-band process.
@@ -286,7 +286,7 @@ func (c *Client) UpdateRoots() error {
 
 	nRootMetadata := m["root.json"]
 
-	// https://theupdateframework.github.io/specification/v1.0.19/index.html#update-root
+	// https://DataDog.github.io/specification/v1.0.19/index.html#update-root
 
 	// 5.3.1 Since it may now be signed using entirely different keys,
 	// the client MUST somehow be able to establish a trusted line of
@@ -512,7 +512,7 @@ func (c *Client) loadAndVerifyRootMeta(rootJSON []byte, ignoreExpiredCheck bool)
 			// from the public key. So to be forwards compatible,
 			// we ignore `ErrWrongID` errors.
 			//
-			// TAP-12: https://github.com/theupdateframework/taps/blob/master/tap12.md
+			// TAP-12: https://github.com/DataDog/taps/blob/master/tap12.md
 			if _, ok := err.(verify.ErrWrongID); !ok {
 				return err
 			}
@@ -568,7 +568,7 @@ func (c *Client) verifyRoot(aJSON []byte, bJSON []byte) (*data.Root, error) {
 			// from the public key. So to be forwards compatible,
 			// we ignore `ErrWrongID` errors.
 			//
-			// TAP-12: https://github.com/theupdateframework/taps/blob/master/tap12.md
+			// TAP-12: https://github.com/DataDog/taps/blob/master/tap12.md
 			if _, ok := err.(verify.ErrWrongID); !ok {
 				return nil, err
 			}
@@ -844,6 +844,7 @@ func (c *Client) localMetaFromSnapshot(name string, m data.SnapshotFileMeta) (js
 }
 
 // hasTargetsMeta checks whether local metadata has the given snapshot meta
+//
 //lint:ignore U1000 unused
 func (c *Client) hasTargetsMeta(m data.SnapshotFileMeta) bool {
 	b, ok := c.localMeta["targets.json"]
@@ -859,6 +860,7 @@ func (c *Client) hasTargetsMeta(m data.SnapshotFileMeta) bool {
 }
 
 // hasSnapshotMeta checks whether local metadata has the given meta
+//
 //lint:ignore U1000 unused
 func (c *Client) hasMetaFromTimestamp(name string, m data.TimestampFileMeta) bool {
 	b, ok := c.localMeta[name]
@@ -882,11 +884,11 @@ type Destination interface {
 //
 // dest will be deleted and an error returned in the following situations:
 //
-//   * The target does not exist in the local targets.json
-//   * Failed to fetch the chain of delegations accessible from local snapshot.json
-//   * The target does not exist in any targets
-//   * Metadata cannot be generated for the downloaded data
-//   * Generated metadata does not match local metadata for the given file
+//   - The target does not exist in the local targets.json
+//   - Failed to fetch the chain of delegations accessible from local snapshot.json
+//   - The target does not exist in any targets
+//   - Metadata cannot be generated for the downloaded data
+//   - Generated metadata does not match local metadata for the given file
 func (c *Client) Download(name string, dest Destination) (err error) {
 	// delete dest if there is an error
 	defer func() {

@@ -3,7 +3,7 @@ package keys
 import (
 	"encoding/json"
 
-	"github.com/theupdateframework/go-tuf/data"
+	"github.com/DataDog/go-tuf/data"
 	. "gopkg.in/check.v1"
 )
 

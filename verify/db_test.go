@@ -3,8 +3,8 @@ package verify
 import (
 	"testing"
 
+	"github.com/DataDog/go-tuf/data"
 	"github.com/stretchr/testify/assert"
-	"github.com/theupdateframework/go-tuf/data"
 )
 
 func TestDelegationsDB(t *testing.T) {

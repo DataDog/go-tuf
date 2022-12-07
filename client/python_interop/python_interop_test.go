@@ -11,9 +11,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	tuf "github.com/theupdateframework/go-tuf"
-	client "github.com/theupdateframework/go-tuf/client"
-	"github.com/theupdateframework/go-tuf/util"
+	tuf "github.com/DataDog/go-tuf"
+	client "github.com/DataDog/go-tuf/client"
+	"github.com/DataDog/go-tuf/util"
 	. "gopkg.in/check.v1"
 )
 
