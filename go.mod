@@ -3,7 +3,7 @@ module github.com/theupdateframework/go-tuf
 go 1.16
 
 require (
-	github.com/dustin/go-humanize v1.0.0
+	github.com/dustin/go-humanize v1.0.1
 	github.com/flynn/go-docopt v0.0.0-20140912013429-f6dd2ebbb31e
 	github.com/secure-systems-lab/go-securesystemslib v0.2.0
 	github.com/stretchr/testify v1.7.0
