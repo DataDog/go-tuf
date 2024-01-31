@@ -1,12 +1,14 @@
 package client
 
 import (
-	"encoding/json"
 	"path/filepath"
 	"testing"
 
-	. "gopkg.in/check.v1"
+	"github.com/goccy/go-json"
+
 	"os"
+
+	. "gopkg.in/check.v1"
 )
 
 type LocalStoreSuite struct{}

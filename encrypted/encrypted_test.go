@@ -1,9 +1,10 @@
 package encrypted
 
 import (
-	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/goccy/go-json"
 
 	. "gopkg.in/check.v1"
 )

@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"crypto"
 	"crypto/x509"
-	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
+
+	"encoding/json"
 )
 
 type PKIXPublicKey struct {

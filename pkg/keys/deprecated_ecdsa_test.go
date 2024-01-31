@@ -6,8 +6,9 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
-	"encoding/json"
 	"errors"
+
+	"encoding/json"
 
 	"github.com/theupdateframework/go-tuf/data"
 	. "gopkg.in/check.v1"

@@ -5,6 +5,7 @@ go 1.18
 require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/flynn/go-docopt v0.0.0-20140912013429-f6dd2ebbb31e
+	github.com/goccy/go-json v0.10.2
 	github.com/google/gofuzz v1.2.0
 	github.com/secure-systems-lab/go-securesystemslib v0.7.0
 	github.com/stretchr/testify v1.8.4

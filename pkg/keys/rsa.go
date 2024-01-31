@@ -7,11 +7,12 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
-	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
+
+	"encoding/json"
 
 	"github.com/theupdateframework/go-tuf/data"
 )

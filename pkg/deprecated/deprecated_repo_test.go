@@ -5,8 +5,9 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
-	"encoding/json"
 	"testing"
+
+	"github.com/goccy/go-json"
 
 	"github.com/secure-systems-lab/go-securesystemslib/cjson"
 	repo "github.com/theupdateframework/go-tuf"

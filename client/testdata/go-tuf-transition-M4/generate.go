@@ -1,13 +1,14 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"time"
+
+	"github.com/goccy/go-json"
 
 	tuf "github.com/theupdateframework/go-tuf"
 	"github.com/theupdateframework/go-tuf/data"

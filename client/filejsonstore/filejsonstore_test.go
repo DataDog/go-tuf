@@ -1,12 +1,13 @@
 package client
 
 import (
-	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/goccy/go-json"
 
 	"gopkg.in/check.v1"
 )

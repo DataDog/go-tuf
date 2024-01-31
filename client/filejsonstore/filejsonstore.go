@@ -1,13 +1,14 @@
 package client
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"sync"
+
+	"github.com/goccy/go-json"
 
 	"github.com/theupdateframework/go-tuf/client"
 	"github.com/theupdateframework/go-tuf/internal/fsutil"

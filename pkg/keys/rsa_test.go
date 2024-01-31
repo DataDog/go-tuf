@@ -3,9 +3,10 @@ package keys
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"io"
+
+	"encoding/json"
 
 	"github.com/theupdateframework/go-tuf/data"
 	. "gopkg.in/check.v1"
