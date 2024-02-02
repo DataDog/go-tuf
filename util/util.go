@@ -17,7 +17,7 @@ import (
 
 	"github.com/goccy/go-json"
 
-	"github.com/theupdateframework/go-tuf/data"
+	"github.com/DataDog/go-tuf/data"
 )
 
 type ErrWrongLength struct {
