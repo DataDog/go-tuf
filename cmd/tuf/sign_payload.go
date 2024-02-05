@@ -1,9 +1,10 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
+
+	"github.com/goccy/go-json"
 
 	"github.com/flynn/go-docopt"
 	tuf "github.com/theupdateframework/go-tuf"

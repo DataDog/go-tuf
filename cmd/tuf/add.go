@@ -1,7 +1,7 @@
 package main
 
 import (
-	"encoding/json"
+	"github.com/goccy/go-json"
 
 	"github.com/flynn/go-docopt"
 	"github.com/theupdateframework/go-tuf"

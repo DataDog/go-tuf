@@ -4,10 +4,11 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/x509"
-	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"io"
+
+	"encoding/json"
 
 	. "gopkg.in/check.v1"
 )

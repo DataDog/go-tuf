@@ -1,7 +1,7 @@
 package client
 
 import (
-	"encoding/json"
+	"github.com/goccy/go-json"
 
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/errors"

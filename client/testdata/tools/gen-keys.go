@@ -5,10 +5,11 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"time"
+
+	"github.com/goccy/go-json"
 
 	"github.com/theupdateframework/go-tuf/data"
 )

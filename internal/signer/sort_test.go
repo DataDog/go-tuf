@@ -1,9 +1,10 @@
 package signer_test
 
 import (
-	"encoding/json"
 	"sort"
 	"testing"
+
+	"github.com/goccy/go-json"
 
 	"github.com/theupdateframework/go-tuf/data"
 	"github.com/theupdateframework/go-tuf/internal/signer"

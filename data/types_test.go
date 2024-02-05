@@ -1,8 +1,9 @@
 package data
 
 import (
-	"encoding/json"
 	"testing"
+
+	"github.com/goccy/go-json"
 
 	"github.com/secure-systems-lab/go-securesystemslib/cjson"
 	"github.com/stretchr/testify/assert"
@@ -237,7 +238,7 @@ func TestDelegatedRoleUnmarshalErr(t *testing.T) {
 
 	// test for type errors
 	err := json.Unmarshal([]byte(`{"keyids":"a"}`), &d)
-	assert.Equal(t, "keyids", err.(*json.UnmarshalTypeError).Field)
+	assert.Equal(t, "json: slice unexpected end of JSON input", err.(*json.SyntaxError).Error())
 }
 
 func TestCustomField(t *testing.T) {

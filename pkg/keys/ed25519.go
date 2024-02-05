@@ -6,10 +6,11 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/subtle"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+
+	"encoding/json"
 
 	"github.com/theupdateframework/go-tuf/data"
 )

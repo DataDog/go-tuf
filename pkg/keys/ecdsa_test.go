@@ -5,10 +5,11 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"io"
 	"strings"
+
+	"encoding/json"
 
 	fuzz "github.com/google/gofuzz"
 	"github.com/theupdateframework/go-tuf/data"

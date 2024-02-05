@@ -5,10 +5,11 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/sha256"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+
+	"encoding/json"
 
 	"github.com/theupdateframework/go-tuf/data"
 )
