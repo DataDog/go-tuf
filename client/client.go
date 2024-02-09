@@ -493,14 +493,18 @@ func (c *Client) getDelegationPathFromRaw(snapshot *data.Snapshot, delegatedTarg
 	if err := json.Unmarshal(s.Signed, targets); err != nil {
 		return nil, err
 	}
+	savedResp := make([]string, 0)
 	for targetPath := range targets.Targets {
-		_, resp, err := c.getTargetFileMetaDelegationPath(targetPath, snapshot)
-		// We only need to test one targets file:
-		// - If it is valid, it means the delegated targets has been validated
-		// - If it is not, the delegated targets isn't valid
-		return resp, err
+		fileMeta, resp, err := c.getTargetFileMetaDelegationPath(targetPath, snapshot)
+		if err != nil {
+			return nil, err
+		}
+		c.targets[targetPath] = fileMeta
+		if len(savedResp) == 0 {
+			savedResp = resp
+		}
 	}
-	return nil, nil
+	return savedResp, nil
 }
 
 // loadAndVerifyLocalRootMeta decodes and verifies root metadata from
