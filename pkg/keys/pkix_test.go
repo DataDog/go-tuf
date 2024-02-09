@@ -8,7 +8,7 @@ import (
 	"errors"
 	"io"
 
-	"encoding/json"
+	"github.com/goccy/go-json"
 
 	. "gopkg.in/check.v1"
 )

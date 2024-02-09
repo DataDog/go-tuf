@@ -9,7 +9,7 @@ import (
 	"io"
 	"strings"
 
-	"encoding/json"
+	"github.com/goccy/go-json"
 
 	"github.com/DataDog/go-tuf/data"
 	fuzz "github.com/google/gofuzz"
