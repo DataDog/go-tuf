@@ -8,6 +8,7 @@ import (
 
 	"github.com/DataDog/go-tuf/data"
 	"github.com/DataDog/go-tuf/internal/roles"
+	"github.com/DataDog/go-tuf/lfu"
 	"github.com/DataDog/go-tuf/pkg/keys"
 	"github.com/secure-systems-lab/go-securesystemslib/cjson"
 )
@@ -18,18 +19,32 @@ type signedMeta struct {
 	Version int64     `json:"version"`
 }
 
+var lfuCache = lfu.New()
+
+func init() {
+	lfuCache.UpperBound = 1000
+}
+
 // VerifySignature takes a signed JSON message, a signature, and a
 // verifier and verifies the given signature on the JSON message
 // using the verifier. It returns an error if verification fails.
 func VerifySignature(signed json.RawMessage, sig data.HexBytes,
 	verifier keys.Verifier) error {
-	var decoded map[string]interface{}
-	if err := json.Unmarshal(signed, &decoded); err != nil {
-		return err
-	}
-	msg, err := cjson.EncodeCanonical(decoded)
-	if err != nil {
-		return err
+
+	signedString := string(signed)
+	msg := lfuCache.Get(signedString)
+	var err error
+
+	if msg == nil {
+		var decoded map[string]interface{}
+		if err := json.Unmarshal(signed, &decoded); err != nil {
+			return err
+		}
+		msg, err = cjson.EncodeCanonical(decoded)
+		if err != nil {
+			return err
+		}
+		lfuCache.Set(signedString, msg)
 	}
 	return verifier.Verify(msg, sig)
 }
