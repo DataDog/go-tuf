@@ -9,6 +9,10 @@ import (
 // getTargetFileMeta searches for a verified TargetFileMeta matching a target
 // Requires a local snapshot to be loaded and is locked to the snapshot versions.
 func (c *Client) getTargetFileMeta(target string) (data.TargetFileMeta, error) {
+	if targetFileMeta, ok := c.targets[target]; ok {
+		return targetFileMeta, nil
+	}
+
 	snapshot, err := c.loadLocalSnapshot()
 	if err != nil {
 		return data.TargetFileMeta{}, err
@@ -18,6 +22,7 @@ func (c *Client) getTargetFileMeta(target string) (data.TargetFileMeta, error) {
 	if err != nil {
 		return data.TargetFileMeta{}, err
 	}
+
 	return targetFileMeta, nil
 }
 
@@ -70,6 +75,8 @@ func (c *Client) getTargetFileMetaDelegationPath(target string, snapshot *data.S
 	}
 
 	if len(delegationRole) > 0 {
+		// Store in local cache
+		c.targets[target] = targetFileMeta
 		return targetFileMeta, buildPath(delegations.Parent, delegationRole, ""), nil
 	}
 
