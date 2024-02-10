@@ -493,18 +493,19 @@ func (c *Client) getDelegationPathFromRaw(snapshot *data.Snapshot, delegatedTarg
 	if err := json.Unmarshal(s.Signed, targets); err != nil {
 		return nil, err
 	}
-	savedResp := make([]string, 0)
+	// savedResp := make([]string, 0)
 	for targetPath := range targets.Targets {
-		fileMeta, resp, err := c.getTargetFileMetaDelegationPath(targetPath, snapshot)
+		_, resp, err := c.getTargetFileMetaDelegationPath(targetPath, snapshot)
 		if err != nil {
 			return nil, err
 		}
-		c.targets[targetPath] = fileMeta
-		if len(savedResp) == 0 {
-			savedResp = resp
-		}
+		// c.targets[targetPath] = fileMeta
+		// if len(savedResp) == 0 {
+		// 	savedResp = resp
+		// }
+		return resp, nil
 	}
-	return savedResp, nil
+	return nil, nil
 }
 
 // loadAndVerifyLocalRootMeta decodes and verifies root metadata from
