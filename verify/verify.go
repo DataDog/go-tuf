@@ -13,7 +13,7 @@ import (
 	"github.com/secure-systems-lab/go-securesystemslib/cjson"
 )
 
-var lfuCache = lfu.New(100, 10)
+var lfuCache = lfu.New(100, 50)
 
 type signedMeta struct {
 	Type    string    `json:"_type"`
@@ -29,10 +29,8 @@ func VerifySignature(signed json.RawMessage, sig data.HexBytes,
 	var decoded map[string]interface{}
 
 	var msg []byte
-	if rawCached := lfuCache.Get(string(signed)); rawCached != nil {
-		if cached, ok := rawCached.([]byte); ok {
-			msg = cached
-		}
+	if cached, ok := lfuCache.Get(string(signed)).([]byte); ok {
+		msg = cached
 	}
 	if len(msg) == 0 {
 		if err := json.Unmarshal(signed, &decoded); err != nil {
