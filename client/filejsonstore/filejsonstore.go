@@ -10,9 +10,9 @@ import (
 
 	"github.com/goccy/go-json"
 
-	"github.com/theupdateframework/go-tuf/client"
-	"github.com/theupdateframework/go-tuf/internal/fsutil"
-	"github.com/theupdateframework/go-tuf/util"
+	"github.com/DataDog/go-tuf/client"
+	"github.com/DataDog/go-tuf/internal/fsutil"
+	"github.com/DataDog/go-tuf/util"
 )
 
 const (
