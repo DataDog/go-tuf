@@ -43,10 +43,8 @@ func (e *ed25519Verifier) Public() string {
 func (e *ed25519Verifier) Verify(msg, sig []byte) error {
 	key := fmt.Sprintf("key:%s,msg:%s,sig:%s", e.PublicKey, msg, sig)
 	var valid bool
-	if rawCached := lfuCache.Get(key); rawCached != nil {
-		if cached, ok := rawCached.(bool); ok {
-			valid = cached
-		}
+	if cached, ok := lfuCache.Get(key).(bool); ok {
+		valid = cached
 	} else {
 		valid = ed25519.Verify([]byte(e.PublicKey), msg, sig)
 		lfuCache.Set(key, valid)
