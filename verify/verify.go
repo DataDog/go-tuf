@@ -6,11 +6,11 @@ import (
 
 	"github.com/goccy/go-json"
 
+	"github.com/DataDog/go-tuf/data"
+	"github.com/DataDog/go-tuf/internal/roles"
+	"github.com/DataDog/go-tuf/lfu"
+	"github.com/DataDog/go-tuf/pkg/keys"
 	"github.com/secure-systems-lab/go-securesystemslib/cjson"
-	"github.com/theupdateframework/go-tuf/data"
-	"github.com/theupdateframework/go-tuf/internal/roles"
-	"github.com/theupdateframework/go-tuf/lfu"
-	"github.com/theupdateframework/go-tuf/pkg/keys"
 )
 
 var lfuCache = lfu.New(100, 10)
@@ -93,6 +93,7 @@ func (db *DB) Verify(s *data.Signed, role string, minVersion int64) error {
 		}
 	}
 	if sm == nil {
+		sm = &signedMeta{}
 		if err := json.Unmarshal(s.Signed, sm); err != nil {
 			return err
 		}
