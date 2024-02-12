@@ -71,7 +71,7 @@ func (c *Cache) evict(count int) int {
 	var evicted int
 	for i := 0; i < count; {
 		if place := c.freqs.Front(); place != nil {
-			for entry, _ := range place.Value.(*listEntry).entries {
+			for entry := range place.Value.(*listEntry).entries {
 				if i < count {
 					delete(c.values, entry.key)
 					c.remEntry(place, entry)
