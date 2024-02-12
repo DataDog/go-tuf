@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"io"
 
-	"encoding/json"
+	"github.com/goccy/go-json"
 
 	"github.com/theupdateframework/go-tuf/data"
 	"github.com/theupdateframework/go-tuf/lfu"
