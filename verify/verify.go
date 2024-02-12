@@ -13,7 +13,7 @@ import (
 	"github.com/theupdateframework/go-tuf/pkg/keys"
 )
 
-var lfuCache = lfu.New()
+var lfuCache = lfu.New(100, 10)
 
 type signedMeta struct {
 	Type    string    `json:"_type"`

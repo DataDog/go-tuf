@@ -6,16 +6,13 @@ import (
 	"sync"
 )
 
-const (
-	upperBound = 100
-	lowerBound = 10
-)
-
 type Cache struct {
-	values map[string]*cacheEntry
-	freqs  *list.List
-	len    int
-	lock   *sync.Mutex
+	values     map[string]*cacheEntry
+	freqs      *list.List
+	len        int
+	lock       *sync.Mutex
+	upperBound int
+	lowerBound int
 }
 
 type cacheEntry struct {
@@ -29,11 +26,13 @@ type listEntry struct {
 	freq    int
 }
 
-func New() *Cache {
+func New(upperBound int, lowerBound int) *Cache {
 	c := new(Cache)
 	c.values = make(map[string]*cacheEntry)
 	c.freqs = list.New()
 	c.lock = new(sync.Mutex)
+	c.upperBound = upperBound
+	c.lowerBound = lowerBound
 	return c
 }
 
@@ -60,8 +59,8 @@ func (c *Cache) Set(key string, value interface{}) {
 		c.values[key] = e
 		c.increment(e)
 		c.len++
-		if c.len > upperBound {
-			c.evict(c.len - lowerBound)
+		if c.len > c.upperBound {
+			c.evict(c.len - c.lowerBound)
 		}
 	}
 }
