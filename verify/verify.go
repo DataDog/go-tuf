@@ -33,7 +33,8 @@ func VerifySignature(signed json.RawMessage, sig data.HexBytes,
 		if cached, ok := rawCached.([]byte); ok {
 			msg = cached
 		}
-	} else {
+	}
+	if len(msg) == 0 {
 		if err := json.Unmarshal(signed, &decoded); err != nil {
 			return err
 		}
@@ -85,12 +86,13 @@ func (db *DB) Verify(s *data.Signed, role string, minVersion int64) error {
 		return err
 	}
 
-	sm := &signedMeta{}
+	var sm *signedMeta
 	if rawCached := lfuCache.Get(string(s.Signed)); rawCached != nil {
 		if cached, ok := rawCached.(signedMeta); ok {
 			sm = &cached
 		}
-	} else {
+	}
+	if sm == nil {
 		if err := json.Unmarshal(s.Signed, sm); err != nil {
 			return err
 		}
