@@ -13,7 +13,7 @@ import (
 	"github.com/secure-systems-lab/go-securesystemslib/cjson"
 )
 
-var lfuCache = lfu.New(100, 50)
+var lfuCache = lfu.New(1000, 100)
 
 type signedMeta struct {
 	Type    string    `json:"_type"`
