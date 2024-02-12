@@ -6,11 +6,11 @@ import (
 
 	"github.com/goccy/go-json"
 
-	"github.com/DataDog/go-tuf/data"
-	"github.com/DataDog/go-tuf/internal/roles"
-	"github.com/DataDog/go-tuf/lfu"
-	"github.com/DataDog/go-tuf/pkg/keys"
 	"github.com/secure-systems-lab/go-securesystemslib/cjson"
+	"github.com/theupdateframework/go-tuf/data"
+	"github.com/theupdateframework/go-tuf/internal/roles"
+	"github.com/theupdateframework/go-tuf/lfu"
+	"github.com/theupdateframework/go-tuf/pkg/keys"
 )
 
 var lfuCache = lfu.New(1000, 500)
