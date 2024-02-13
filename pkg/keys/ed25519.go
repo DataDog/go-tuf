@@ -12,15 +12,19 @@ import (
 
 	"encoding/json"
 
+	"github.com/dgrijalva/lfu-go"
 	"github.com/theupdateframework/go-tuf/data"
-	"github.com/theupdateframework/go-tuf/lfu"
 )
 
-var lfuCache = lfu.New(100, 10)
+var lfuCache *lfu.Cache
 
 func init() {
 	SignerMap.Store(data.KeyTypeEd25519, NewEd25519Signer)
 	VerifierMap.Store(data.KeyTypeEd25519, NewEd25519Verifier)
+
+	lfuCache = lfu.New()
+	lfuCache.UpperBound = 100
+	lfuCache.LowerBound = 10
 }
 
 func NewEd25519Signer() Signer {
