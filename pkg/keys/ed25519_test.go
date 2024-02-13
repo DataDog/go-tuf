@@ -4,11 +4,10 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
 	"io"
 	"strings"
 
-	"encoding/json"
+	"github.com/goccy/go-json"
 
 	fuzz "github.com/google/gofuzz"
 	"github.com/theupdateframework/go-tuf/data"
@@ -48,7 +47,7 @@ func (Ed25519Suite) TestUnmarshalEd25519_Invalid(c *C) {
 		Value:      badKeyValue,
 	}
 	verifier := NewEd25519Verifier()
-	c.Assert(verifier.UnmarshalPublicKey(badKey), ErrorMatches, "json: cannot unmarshal.*")
+	c.Assert(verifier.UnmarshalPublicKey(badKey), ErrorMatches, "invalid character 't' looking for beginning of value")
 }
 
 func (Ed25519Suite) TestUnmarshalEd25519_FastFuzz(c *C) {
@@ -84,7 +83,7 @@ func (Ed25519Suite) TestUnmarshalEd25519_TooLongContent(c *C) {
 	}
 	verifier := NewEd25519Verifier()
 	err = verifier.UnmarshalPublicKey(badKey)
-	c.Assert(errors.Is(err, io.ErrUnexpectedEOF), Equals, true)
+	c.Assert(err.Error(), Equals, "json: value of string unexpected end of JSON input")
 }
 
 func (Ed25519Suite) TestSignVerify(c *C) {
