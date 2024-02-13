@@ -6,14 +6,20 @@ import (
 
 	"github.com/goccy/go-json"
 
+	"github.com/dgrijalva/lfu-go"
 	"github.com/secure-systems-lab/go-securesystemslib/cjson"
 	"github.com/theupdateframework/go-tuf/data"
 	"github.com/theupdateframework/go-tuf/internal/roles"
-	"github.com/theupdateframework/go-tuf/lfu"
 	"github.com/theupdateframework/go-tuf/pkg/keys"
 )
 
-var lfuCache = lfu.New(1000, 500)
+var lfuCache *lfu.Cache
+
+func init() {
+	lfuCache = lfu.New()
+	lfuCache.UpperBound = 1000
+	lfuCache.LowerBound = 500
+}
 
 type signedMeta struct {
 	Type    string    `json:"_type"`
