@@ -14,7 +14,7 @@ import (
 
 	"github.com/goccy/go-json"
 
-	"github.com/theupdateframework/go-tuf/data"
+	"github.com/DataDog/go-tuf/data"
 )
 
 func init() {
@@ -41,7 +41,7 @@ func (p *rsaVerifier) Public() string {
 	r, err := x509.MarshalPKIXPublicKey(p.rsaKey)
 	if err != nil {
 		// TODO: Gracefully handle these errors.
-		// See https://github.com/theupdateframework/go-tuf/issues/363
+		// See https://github.com/DataDog/go-tuf/issues/363
 		panic(err)
 	}
 	return string(r)

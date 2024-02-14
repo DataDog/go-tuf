@@ -12,9 +12,9 @@ import (
 
 	"github.com/goccy/go-json"
 
-	"github.com/theupdateframework/go-tuf/data"
-	"github.com/theupdateframework/go-tuf/pkg/keys"
-	"github.com/theupdateframework/go-tuf/sign"
+	"github.com/DataDog/go-tuf/data"
+	"github.com/DataDog/go-tuf/pkg/keys"
+	"github.com/DataDog/go-tuf/sign"
 	"golang.org/x/crypto/ed25519"
 
 	. "gopkg.in/check.v1"

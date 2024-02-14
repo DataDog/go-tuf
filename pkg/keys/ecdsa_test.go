@@ -10,8 +10,8 @@ import (
 
 	"github.com/goccy/go-json"
 
+	"github.com/DataDog/go-tuf/data"
 	fuzz "github.com/google/gofuzz"
-	"github.com/theupdateframework/go-tuf/data"
 	. "gopkg.in/check.v1"
 )
 

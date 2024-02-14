@@ -12,8 +12,8 @@ import (
 
 	"github.com/goccy/go-json"
 
+	"github.com/DataDog/go-tuf/data"
 	"github.com/dgrijalva/lfu-go"
-	"github.com/theupdateframework/go-tuf/data"
 )
 
 var lfuCache *lfu.Cache
