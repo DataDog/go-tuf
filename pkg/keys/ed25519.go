@@ -10,14 +10,21 @@ import (
 	"fmt"
 	"io"
 
-	"encoding/json"
+	"github.com/goccy/go-json"
 
+	"github.com/dgrijalva/lfu-go"
 	"github.com/theupdateframework/go-tuf/data"
 )
+
+var lfuCache *lfu.Cache
 
 func init() {
 	SignerMap.Store(data.KeyTypeEd25519, NewEd25519Signer)
 	VerifierMap.Store(data.KeyTypeEd25519, NewEd25519Verifier)
+
+	lfuCache = lfu.New()
+	lfuCache.UpperBound = 200
+	lfuCache.LowerBound = 50
 }
 
 func NewEd25519Signer() Signer {
@@ -38,7 +45,16 @@ func (e *ed25519Verifier) Public() string {
 }
 
 func (e *ed25519Verifier) Verify(msg, sig []byte) error {
-	if !ed25519.Verify([]byte(e.PublicKey), msg, sig) {
+	key := fmt.Sprintf("key:%s,msg:%s,sig:%s", e.PublicKey, msg, sig)
+	var valid bool
+	if cached, ok := lfuCache.Get(key).(bool); ok {
+		valid = cached
+	} else {
+		valid = ed25519.Verify([]byte(e.PublicKey), msg, sig)
+		lfuCache.Set(key, valid)
+	}
+
+	if !valid {
 		return errors.New("tuf: ed25519 signature verification failed")
 	}
 	return nil

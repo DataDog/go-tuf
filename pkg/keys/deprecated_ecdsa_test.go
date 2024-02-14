@@ -8,7 +8,7 @@ import (
 	"crypto/sha256"
 	"errors"
 
-	"encoding/json"
+	"github.com/goccy/go-json"
 
 	"github.com/theupdateframework/go-tuf/data"
 	. "gopkg.in/check.v1"

@@ -5,10 +5,9 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
-	"errors"
 	"io"
 
-	"encoding/json"
+	"github.com/goccy/go-json"
 
 	. "gopkg.in/check.v1"
 )
@@ -59,5 +58,5 @@ func (PKIXSuite) TestUnmarshalPKIX_TooLongContent(c *C) {
 
 	var k PKIXPublicKey
 	err = json.Unmarshal(tooLongPayload, &k)
-	c.Assert(errors.Is(err, io.ErrUnexpectedEOF), Equals, true)
+	c.Assert(err.Error(), Equals, "json: string unexpected end of JSON input")
 }

@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"io"
 
-	"encoding/json"
+	"github.com/goccy/go-json"
 )
 
 type PKIXPublicKey struct {

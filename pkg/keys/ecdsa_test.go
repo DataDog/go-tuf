@@ -5,11 +5,10 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
 	"io"
 	"strings"
 
-	"encoding/json"
+	"github.com/goccy/go-json"
 
 	fuzz "github.com/google/gofuzz"
 	"github.com/theupdateframework/go-tuf/data"
@@ -124,7 +123,7 @@ func (ECDSASuite) TestUnmarshalECDSA_Invalid(c *C) {
 		Value:      badKeyValue,
 	}
 	verifier := NewEcdsaVerifier()
-	c.Assert(verifier.UnmarshalPublicKey(badKey), ErrorMatches, "json: cannot unmarshal.*")
+	c.Assert(verifier.UnmarshalPublicKey(badKey), ErrorMatches, "invalid character 't' looking for beginning of value")
 }
 
 func (ECDSASuite) TestUnmarshalECDSA_FastFuzz(c *C) {
@@ -160,5 +159,5 @@ func (ECDSASuite) TestUnmarshalECDSA_TooLongContent(c *C) {
 	}
 	verifier := NewEcdsaVerifier()
 	err = verifier.UnmarshalPublicKey(badKey)
-	c.Assert(errors.Is(err, io.ErrUnexpectedEOF), Equals, true)
+	c.Assert(err.Error(), Equals, "json: value of string unexpected end of JSON input")
 }
