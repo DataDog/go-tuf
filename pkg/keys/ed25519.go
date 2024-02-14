@@ -23,8 +23,8 @@ func init() {
 	VerifierMap.Store(data.KeyTypeEd25519, NewEd25519Verifier)
 
 	lfuCache = lfu.New()
-	lfuCache.UpperBound = 100
-	lfuCache.LowerBound = 10
+	lfuCache.UpperBound = 200
+	lfuCache.LowerBound = 50
 }
 
 func NewEd25519Signer() Signer {
