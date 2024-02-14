@@ -17,8 +17,8 @@ var lfuCache *lfu.Cache
 
 func init() {
 	lfuCache = lfu.New()
-	lfuCache.UpperBound = 1000
-	lfuCache.LowerBound = 500
+	lfuCache.UpperBound = 200
+	lfuCache.LowerBound = 50
 }
 
 type signedMeta struct {
