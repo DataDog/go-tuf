@@ -6,9 +6,9 @@ import (
 
 	"github.com/goccy/go-json"
 
-	"github.com/theupdateframework/go-tuf/data"
-	"github.com/theupdateframework/go-tuf/internal/signer"
-	"github.com/theupdateframework/go-tuf/pkg/keys"
+	"github.com/DataDog/go-tuf/data"
+	"github.com/DataDog/go-tuf/internal/signer"
+	"github.com/DataDog/go-tuf/pkg/keys"
 )
 
 type mockSigner struct {
