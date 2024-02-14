@@ -3,10 +3,9 @@ package keys
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
 	"io"
 
-	"encoding/json"
+	"github.com/goccy/go-json"
 
 	"github.com/theupdateframework/go-tuf/data"
 	. "gopkg.in/check.v1"
@@ -88,7 +87,7 @@ func (ECDSASuite) TestUnmarshalRSA_Invalid(c *C) {
 		Value:      badKeyValue,
 	}
 	verifier := NewEcdsaVerifier()
-	c.Assert(verifier.UnmarshalPublicKey(badKey), ErrorMatches, "json: cannot unmarshal.*")
+	c.Assert(verifier.UnmarshalPublicKey(badKey), ErrorMatches, "invalid character 't' looking for beginning of value")
 }
 
 func (ECDSASuite) TestUnmarshalRSAPublicKey(c *C) {
@@ -122,5 +121,5 @@ func (ECDSASuite) TestUnmarshalRSA_TooLongContent(c *C) {
 	}
 	verifier := newRsaVerifier()
 	err = verifier.UnmarshalPublicKey(badKey)
-	c.Assert(errors.Is(err, io.ErrUnexpectedEOF), Equals, true)
+	c.Assert(err.Error(), Equals, "json: value of string unexpected end of JSON input")
 }
