@@ -6,11 +6,20 @@ import (
 
 	"github.com/goccy/go-json"
 
+	"github.com/dgrijalva/lfu-go"
 	"github.com/secure-systems-lab/go-securesystemslib/cjson"
 	"github.com/theupdateframework/go-tuf/data"
 	"github.com/theupdateframework/go-tuf/internal/roles"
 	"github.com/theupdateframework/go-tuf/pkg/keys"
 )
+
+var lfuCache *lfu.Cache
+
+func init() {
+	lfuCache = lfu.New()
+	lfuCache.UpperBound = 200
+	lfuCache.LowerBound = 50
+}
 
 type signedMeta struct {
 	Type    string    `json:"_type"`
@@ -24,12 +33,21 @@ type signedMeta struct {
 func VerifySignature(signed json.RawMessage, sig data.HexBytes,
 	verifier keys.Verifier) error {
 	var decoded map[string]interface{}
-	if err := json.Unmarshal(signed, &decoded); err != nil {
-		return err
+
+	var msg []byte
+	if cached, ok := lfuCache.Get(string(signed)).([]byte); ok {
+		msg = cached
 	}
-	msg, err := cjson.EncodeCanonical(decoded)
-	if err != nil {
-		return err
+	if len(msg) == 0 {
+		if err := json.Unmarshal(signed, &decoded); err != nil {
+			return err
+		}
+		var err error
+		msg, err = cjson.EncodeCanonical(decoded)
+		if err != nil {
+			return err
+		}
+		lfuCache.Set(string(signed), msg)
 	}
 	return verifier.Verify(msg, sig)
 }
@@ -72,10 +90,20 @@ func (db *DB) Verify(s *data.Signed, role string, minVersion int64) error {
 		return err
 	}
 
-	sm := &signedMeta{}
-	if err := json.Unmarshal(s.Signed, sm); err != nil {
-		return err
+	var sm *signedMeta
+	if rawCached := lfuCache.Get(string(s.Signed)); rawCached != nil {
+		if cached, ok := rawCached.(signedMeta); ok {
+			sm = &cached
+		}
 	}
+	if sm == nil {
+		sm = &signedMeta{}
+		if err := json.Unmarshal(s.Signed, sm); err != nil {
+			return err
+		}
+		lfuCache.Set(string(s.Signed), *sm)
+	}
+
 	// Verify expiration
 	if IsExpired(sm.Expires) {
 		return ErrExpired{sm.Expires}
