@@ -1,9 +1,9 @@
 package verify
 
 import (
-	"github.com/theupdateframework/go-tuf/data"
-	"github.com/theupdateframework/go-tuf/internal/roles"
-	"github.com/theupdateframework/go-tuf/pkg/keys"
+	"github.com/DataDog/go-tuf/data"
+	"github.com/DataDog/go-tuf/internal/roles"
+	"github.com/DataDog/go-tuf/pkg/keys"
 )
 
 type Role struct {
@@ -65,7 +65,7 @@ func (db *DB) AddKey(id string, k *data.PublicKey) error {
 	//
 	// AddKey should be idempotent, so we allow re-adding the same PublicKey.
 	//
-	// TAP-12: https://github.com/theupdateframework/taps/blob/master/tap12.md
+	// TAP-12: https://github.com/DataDog/taps/blob/master/tap12.md
 	if oldVerifier, exists := db.verifiers[id]; exists && oldVerifier.Public() != verifier.Public() {
 		return ErrRepeatID{id}
 	}

@@ -16,7 +16,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/theupdateframework/go-tuf/data"
+	"github.com/DataDog/go-tuf/data"
 )
 
 type ErrWrongLength struct {
@@ -139,7 +139,7 @@ func SnapshotFileMetaEqual(actual data.SnapshotFileMeta, expected data.SnapshotF
 	// member of snapshots. However they are considering requiring hashes
 	// for delegated roles to avoid an attack described in Section 5.6 of
 	// the Mercury paper:
-	// https://github.com/theupdateframework/specification/pull/40
+	// https://github.com/DataDog/specification/pull/40
 	if expected.Length != 0 && actual.Length != expected.Length {
 		return ErrWrongLength{expected.Length, actual.Length}
 	}

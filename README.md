@@ -1,6 +1,6 @@
 # go-tuf
 
-[![build](https://github.com/theupdateframework/go-tuf/workflows/build/badge.svg)](https://github.com/theupdateframework/go-tuf/actions?query=workflow%3Abuild) [![Coverage Status](https://coveralls.io/repos/github/theupdateframework/go-tuf/badge.svg)](https://coveralls.io/github/theupdateframework/go-tuf) [![PkgGoDev](https://pkg.go.dev/badge/github.com/theupdateframework/go-tuf)](https://pkg.go.dev/github.com/theupdateframework/go-tuf) [![Go Report Card](https://goreportcard.com/badge/github.com/theupdateframework/go-tuf)](https://goreportcard.com/report/github.com/theupdateframework/go-tuf)
+[![build](https://github.com/DataDog/go-tuf/workflows/build/badge.svg)](https://github.com/DataDog/go-tuf/actions?query=workflow%3Abuild) [![Coverage Status](https://coveralls.io/repos/github/theupdateframework/go-tuf/badge.svg)](https://coveralls.io/github/theupdateframework/go-tuf) [![PkgGoDev](https://pkg.go.dev/badge/github.com/DataDog/go-tuf)](https://pkg.go.dev/github.com/DataDog/go-tuf) [![Go Report Card](https://goreportcard.com/badge/github.com/DataDog/go-tuf)](https://goreportcard.com/report/github.com/DataDog/go-tuf)
 
 This is a Go implementation of [The Update Framework (TUF)](http://theupdateframework.com/),
 a framework for securing software update systems.
@@ -35,7 +35,7 @@ The directories contain the following files:
 `go-tuf` is tested on Go versions 1.18.
 
 ```bash
-go install github.com/theupdateframework/go-tuf/cmd/tuf@latest
+go install github.com/DataDog/go-tuf/cmd/tuf@latest
 ```
 
 ### Commands
@@ -154,7 +154,7 @@ If the signature does not verify, it will not be added.
 
 #### `tuf status --valid-at <date> <role>`
 
-Check if the role's metadata will be expired on the given date. 
+Check if the role's metadata will be expired on the given date.
 
 #### Usage of environment variables
 
@@ -638,9 +638,9 @@ $ tuf commit
 
 ## Client
 
-For the client package, see https://godoc.org/github.com/theupdateframework/go-tuf/client.
+For the client package, see https://godoc.org/github.com/DataDog/go-tuf/client.
 
-For the client CLI, see https://github.com/theupdateframework/go-tuf/tree/master/cmd/tuf-client.
+For the client CLI, see https://github.com/DataDog/go-tuf/tree/master/cmd/tuf-client.
 
 ## Contributing and Development
 
@@ -648,7 +648,7 @@ For local development, `go-tuf` requires Go version 1.18.
 
 The [Python interoperability tests](client/python_interop/) require Python 3
 (available as `python` on the `$PATH`) and the [`python-tuf`
-package](https://github.com/theupdateframework/python-tuf) installed (`pip
+package](https://github.com/DataDog/python-tuf) installed (`pip
 install tuf`). To update the data for these tests requires Docker and make (see
 test data [README.md](client/python_interop/testdata/README.md) for details).
 

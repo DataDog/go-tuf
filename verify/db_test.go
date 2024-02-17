@@ -3,9 +3,9 @@ package verify
 import (
 	"testing"
 
+	"github.com/DataDog/go-tuf/data"
+	"github.com/DataDog/go-tuf/pkg/keys"
 	"github.com/stretchr/testify/assert"
-	"github.com/theupdateframework/go-tuf/data"
-	"github.com/theupdateframework/go-tuf/pkg/keys"
 )
 
 func TestDelegationsDB(t *testing.T) {
@@ -93,7 +93,7 @@ func TestDelegationsDB(t *testing.T) {
 // Previously, every key's key ID was the SHA256 of the public key. TAP-12
 // allows arbitrary key IDs, with no loss in security.
 //
-// TAP-12: https://github.com/theupdateframework/taps/blob/master/tap12.md
+// TAP-12: https://github.com/DataDog/taps/blob/master/tap12.md
 func TestTAP12(t *testing.T) {
 	db := NewDB()
 	// Need to use a signer type that supports random signatures.

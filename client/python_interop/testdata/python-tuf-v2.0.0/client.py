@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MIT OR Apache-2.0
 #
 # A simplified version of client_exmample.py from the Python implementation:
-# https://github.com/theupdateframework/python-tuf/blob/v1.0.0/examples/client_example/client_example.py
+# https://github.com/DataDog/python-tuf/blob/v1.0.0/examples/client_example/client_example.py
 
 import argparse
 
