@@ -3,9 +3,9 @@
 # A script to generate TUF repository files.
 #
 # A modification of generate.py from the Python implementation:
-# https://github.com/theupdateframework/tuf/blob/v0.9.9/tests/repository_data/generate.py
+# https://github.com/DataDog/tuf/blob/v0.9.9/tests/repository_data/generate.py
 # Updated a bit for the v1.0.0 version:
-# https://github.com/theupdateframework/python-tuf/blob/v1.0.0/examples/repo_example/basic_repo.py
+# https://github.com/DataDog/python-tuf/blob/v1.0.0/examples/repo_example/basic_repo.py
 
 import datetime
 import optparse

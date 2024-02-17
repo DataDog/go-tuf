@@ -3,9 +3,9 @@ package targets
 import (
 	"errors"
 
-	"github.com/theupdateframework/go-tuf/data"
-	"github.com/theupdateframework/go-tuf/internal/sets"
-	"github.com/theupdateframework/go-tuf/verify"
+	"github.com/DataDog/go-tuf/data"
+	"github.com/DataDog/go-tuf/internal/sets"
+	"github.com/DataDog/go-tuf/verify"
 )
 
 type Delegation struct {
@@ -66,7 +66,7 @@ func (d *delegationsIterator) Next() (value Delegation, ok bool) {
 
 	// 5.6.7.2 trim delegations to visit, only the current role and its delegations
 	// will be considered
-	// https://github.com/theupdateframework/specification/issues/168
+	// https://github.com/DataDog/specification/issues/168
 	if delegation.Delegatee.Terminating {
 		// Empty the stack.
 		d.stack = d.stack[0:0]
