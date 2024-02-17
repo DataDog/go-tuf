@@ -147,7 +147,7 @@ func TestPersistedMeta(t *testing.T) {
 					version: 2,
 				},
 			},
-			downloadError: ErrUnknownTarget{Name: "unknown", SnapshotVersion: 2},
+			downloadError: ErrNotFound{File: "unknown"},
 			targetError:   ErrNotFound{File: "unknown"},
 			fileContent:   "",
 		},
