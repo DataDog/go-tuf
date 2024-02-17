@@ -492,8 +492,9 @@ func (c *Client) getDelegationPathFromRaw(snapshot *data.Snapshot, delegatedTarg
 	if err := json.Unmarshal(s.Signed, targets); err != nil {
 		return nil, err
 	}
+	cache := newDelegatedTargetsCache()
 	for targetPath := range targets.Targets {
-		_, resp, err := c.getTargetFileMetaDelegationPath(targetPath, snapshot)
+		_, resp, err := c.getTargetFileMetaDelegationPath(snapshot, targetPath, cache)
 		// We only need to test one targets file:
 		// - If it is valid, it means the delegated targets has been validated
 		// - If it is not, the delegated targets isn't valid
@@ -870,6 +871,11 @@ type Destination interface {
 	Delete() error
 }
 
+type NameAndDestination struct {
+	Destination Destination
+	Name        string
+}
+
 // Download downloads the given target file from remote storage into dest.
 //
 // dest will be deleted and an error returned in the following situations:
@@ -882,29 +888,11 @@ type Destination interface {
 //   - Size of the download does not match if the reported size is known and
 //     incorrect
 func (c *Client) Download(name string, dest Destination) (err error) {
-	// delete dest if there is an error
-	defer func() {
-		if err != nil {
-			dest.Delete()
-		}
-	}()
+	return c.DownloadBatch([]NameAndDestination{{Name: name, Destination: dest}})
+}
 
-	// populate c.targets from local storage if not set
-	if c.targets == nil {
-		if err := c.getLocalMeta(); err != nil {
-			return err
-		}
-	}
-
+func (c *Client) download(name string, dest Destination, localMeta data.TargetFileMeta) (err error) {
 	normalizedName := util.NormalizeTarget(name)
-	localMeta, ok := c.targets[normalizedName]
-	if !ok {
-		// search in delegations
-		localMeta, err = c.getTargetFileMeta(normalizedName)
-		if err != nil {
-			return err
-		}
-	}
 
 	// get the data from remote storage
 	r, size, err := c.downloadTarget(normalizedName, c.remote.GetTarget, localMeta.Hashes)
@@ -938,6 +926,39 @@ func (c *Client) Download(name string, dest Destination) (err error) {
 	return nil
 }
 
+func (c *Client) DownloadBatch(namesAndDestinations []NameAndDestination) (err error) {
+	// delete dest if there is an error
+	defer func() {
+		if err != nil {
+			for _, nd := range namesAndDestinations {
+				_ = nd.Destination.Delete()
+			}
+		}
+	}()
+
+	// populate c.targets from local storage if not set
+	if c.targets == nil {
+		if err := c.getLocalMeta(); err != nil {
+			return err
+		}
+	}
+
+	var names []string
+	for _, nd := range namesAndDestinations {
+		names = append(names, nd.Name)
+	}
+	targetFiles, err := c.TargetBatch(names)
+	if err != nil {
+		return err
+	}
+	for _, nd := range namesAndDestinations {
+		if err := c.download(nd.Name, nd.Destination, targetFiles[nd.Name]); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (c *Client) VerifyDigest(digest string, digestAlg string, length int64, path string) error {
 	localMeta, ok := c.targets[path]
 	if !ok {
@@ -965,16 +986,23 @@ func (c *Client) VerifyDigest(digest string, digestAlg string, length int64, pat
 // exists, searching from top-level level targets then through
 // all delegations. If it does not, ErrNotFound will be returned.
 func (c *Client) Target(name string) (data.TargetFileMeta, error) {
-	target, err := c.getTargetFileMeta(util.NormalizeTarget(name))
+	targets, err := c.TargetBatch([]string{name})
+	if err != nil {
+		return data.TargetFileMeta{}, err
+	}
+	return targets[name], nil
+}
+
+// TargetBatch is a batched version of Target.
+func (c *Client) TargetBatch(names []string) (data.TargetFiles, error) {
+	targets, err := c.getTargetFileMetas(names)
 	if err == nil {
-		return target, nil
+		return targets, nil
 	}
-
 	if _, ok := err.(ErrUnknownTarget); ok {
-		return data.TargetFileMeta{}, ErrNotFound{name}
+		return nil, ErrNotFound{err.(ErrUnknownTarget).Name}
 	}
-
-	return data.TargetFileMeta{}, err
+	return nil, err
 }
 
 // Targets returns the complete list of available top-level targets.
