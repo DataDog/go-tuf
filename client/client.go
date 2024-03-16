@@ -856,37 +856,43 @@ func (c *Client) DownloadBatch(targetFiles map[string]Destination) (err error) {
 	}
 
 	for name, dest := range targetFiles {
-		localMeta := targets[name]
-
-		// get the data from remote storage
-		normalizedName := util.NormalizeTarget(name)
-		r, size, err := c.downloadTarget(normalizedName, c.remote.GetTarget, localMeta.Hashes)
+		err := c.download(name, targets[name], dest)
 		if err != nil {
 			return err
 		}
-		defer r.Close()
+	}
+	return nil
+}
 
-		// return ErrWrongSize if the reported size is known and incorrect
-		if size >= 0 && size != localMeta.Length {
-			return ErrWrongSize{name, size, localMeta.Length}
+func (c *Client) download(name string, localMeta data.TargetFileMeta, dest Destination) error {
+	// get the data from remote storage
+	normalizedName := util.NormalizeTarget(name)
+	r, size, err := c.downloadTarget(normalizedName, c.remote.GetTarget, localMeta.Hashes)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	// return ErrWrongSize if the reported size is known and incorrect
+	if size >= 0 && size != localMeta.Length {
+		return ErrWrongSize{name, size, localMeta.Length}
+	}
+
+	// wrap the data in a LimitReader so we download at most localMeta.Length bytes
+	stream := io.LimitReader(r, localMeta.Length)
+
+	// read the data, simultaneously writing it to dest and generating metadata
+	actual, err := util.GenerateTargetFileMeta(io.TeeReader(stream, dest), localMeta.HashAlgorithms()...)
+	if err != nil {
+		return ErrDownloadFailed{name, err}
+	}
+
+	// check the data has the correct length and hashes
+	if err := util.TargetFileMetaEqual(actual, localMeta); err != nil {
+		if e, ok := err.(util.ErrWrongLength); ok {
+			return ErrWrongSize{name, e.Actual, e.Expected}
 		}
-
-		// wrap the data in a LimitReader so we download at most localMeta.Length bytes
-		stream := io.LimitReader(r, localMeta.Length)
-
-		// read the data, simultaneously writing it to dest and generating metadata
-		actual, err := util.GenerateTargetFileMeta(io.TeeReader(stream, dest), localMeta.HashAlgorithms()...)
-		if err != nil {
-			return ErrDownloadFailed{name, err}
-		}
-
-		// check the data has the correct length and hashes
-		if err := util.TargetFileMetaEqual(actual, localMeta); err != nil {
-			if e, ok := err.(util.ErrWrongLength); ok {
-				return ErrWrongSize{name, e.Actual, e.Expected}
-			}
-			return ErrDownloadFailed{name, err}
-		}
+		return ErrDownloadFailed{name, err}
 	}
 	return nil
 }
